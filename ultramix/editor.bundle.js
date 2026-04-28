@@ -504,15 +504,15 @@
                 set(this, toolbar_element, document.createElement("div"), "f"),
                 get(this, toolbar_element, "f").className = "editor-side-toolbar-ui",
                 get(this, toolbar_parentElement, "f").appendChild(get(this, toolbar_element, "f"));
-                let h = !1;
+                let h = 0;
                 const l = document.createElement("button")
                   , c = document.createElement("img");
                 c.src = "images/overlapping_disabled.svg",
                 l.appendChild(c),
                 l.addEventListener("click", ( () => {
                     e.playUIClick(),
-                    h = !h,
-                    c.src = h ? "images/overlapping_enabled.svg" : "images/overlapping_disabled.svg",
+                    h = (h + 1) % 3,
+                    c.src = h == 0 ? "images/overlapping_disabled.svg" : h == 1 ? "images/overlapping_enabled.svg" : "images/pattern.svg",
                     s(h)
                 }
                 )),
@@ -1073,7 +1073,7 @@
             }
             return n
         }
-        var Ft, editor_audioManager, editor_lastEditSoundTime, editor_localization, editor_renderer, editor_transitionManager, editor_track, editor_partRegistry, editor_trackStorage, editor_customTrackManager, editor_networkManager, editor_userProfileManager, editor_dialogManager, editor_inputManager, editor_settingsManager, editor_testCallback, editor_isActive, editor_containerElement, editor_topBar, editor_toastElement, editor_toastTimeout, editor_pasteButton, editor_undoButton, editor_redoButton, editor_partPanelContainer, editor_categoryBar, editor_heightSelectorUI, editor_checkpointOrderUI, editor_exportUI, editor_loadingScreen, editor_helpUI, editor_sideToolbar, editor_trackSettingsUI, editor_activeModal, editor_settingsButton, editor_onMouseMove, editor_onMouseDown, editor_onMouseUp, editor_onMouseOut, editor_onTouchStart, editor_onClick, editor_onKeyDown, editor_onKeyUp, editor_onWheel, editor_onBeforeUnload, editor_cameraRig, editor_orbitControls, editor_isHeightModifierHeld, editor_keyForward, editor_keyRight, editor_keyBackward, editor_keyLeft, editor_keyPitchUp, editor_keyPitchDown, editor_keyYawLeft, editor_keyYawRight, editor_isSaved, editor_raycaster, editor_gridPlane, editor_previewGroup, editor_ghostMaterial, editor_previewMeshes, editor_tileIndicatorMaterial, editor_tileIndicatorGeometry, editor_tileIndicatorMesh, editor_isDeleteKeyHeld, editor_isLeftMouseDown, editor_mouseNDC, editor_lastTouchTimestamp, editor_isTapPending, editor_cursorGridPos, editor_minYOffset, editor_currentRotation, editor_currentAxis, editor_isLargeGrid, editor_isDeleteMode, editor_lastPlacement, editor_lastDeletion, editor_trackName, editor_trackAuthor, editor_lastModified, editor_undoStack, editor_redoStack, editor_checkpointLabels3D, editor_partEntries, editor_selectedPartIndex, editor_selectedColor, editor_isCopyMode, editor_isCutMode, editor_selectionStart, editor_clipboard, editor_activePlacement, editor_selectionBoxMeshes, editor_lastOverlapCheckPos, editor_categoryEntries, editor_selectedCategory, editor_isTyping, updateSelectionBoxVisual, copyOrCutRegion, activatePaste, placeActiveParts, loadTrackMetadata, setTrackName, setTrackAuthor, confirmExit, testTrack, pickPartUnderCursor, undo, redo, showToast, initPartPalette, getEffectiveColor, setEnvironment, refreshAllThumbnails, rebuildPreviewMesh, selectCategory, selectPart, getCurrentHeight, setHeight, recalcMinYOffset, refreshTrackAfterEdit, playEditSound, getCursorGridPosition, findOverlappingParts, hasOverlappingParts, deletePartsAndRecord, updateKeyboardCamera, isKeyboardInputActive, TrackLoadError = n(6223).A, LoadingScreenUI = n(5302).A;
+        var Ft, editor_audioManager, editor_lastEditSoundTime, editor_localization, editor_renderer, editor_transitionManager, editor_track, editor_partRegistry, editor_trackStorage, editor_customTrackManager, editor_networkManager, editor_userProfileManager, editor_dialogManager, editor_inputManager, editor_settingsManager, editor_testCallback, editor_isActive, editor_containerElement, editor_topBar, editor_toastElement, editor_toastTimeout, editor_pasteButton, editor_undoButton, editor_redoButton, editor_partPanelContainer, editor_categoryBar, editor_heightSelectorUI, editor_checkpointOrderUI, editor_exportUI, editor_loadingScreen, editor_helpUI, editor_sideToolbar, editor_trackSettingsUI, editor_activeModal, editor_settingsButton, editor_onMouseMove, editor_onMouseDown, editor_onMouseUp, editor_onMouseOut, editor_onTouchStart, editor_onClick, editor_onKeyDown, editor_onKeyUp, editor_onWheel, editor_onBeforeUnload, editor_cameraRig, editor_orbitControls, editor_isHeightModifierHeld, editor_keyForward, editor_keyRight, editor_keyBackward, editor_keyLeft, editor_keyPitchUp, editor_keyPitchDown, editor_keyYawLeft, editor_keyYawRight, editor_isSaved, editor_raycaster, editor_gridPlane, editor_previewGroup, editor_ghostMaterial, editor_previewMeshes, editor_tileIndicatorMaterial, editor_tileIndicatorGeometry, editor_tileIndicatorMesh, editor_isDeleteKeyHeld, editor_isLeftMouseDown, editor_mouseNDC, editor_lastTouchTimestamp, editor_isTapPending, editor_cursorGridPos, editor_minYOffset, editor_currentRotation, editor_currentAxis, editor_isLargeGrid, editor_overlapMode, editor_lastPlacement, editor_lastDeletion, editor_trackName, editor_trackAuthor, editor_lastModified, editor_undoStack, editor_redoStack, editor_checkpointLabels3D, editor_partEntries, editor_selectedPartIndex, editor_selectedColor, editor_isCopyMode, editor_isCutMode, editor_selectionStart, editor_clipboard, editor_activePlacement, editor_selectionBoxMeshes, editor_lastOverlapCheckPos, editor_categoryEntries, editor_selectedCategory, editor_isTyping, updateSelectionBoxVisual, copyOrCutRegion, activatePaste, placeActiveParts, loadTrackMetadata, setTrackName, setTrackAuthor, confirmExit, testTrack, pickPartUnderCursor, undo, redo, showToast, initPartPalette, getEffectiveColor, setEnvironment, refreshAllThumbnails, rebuildPreviewMesh, selectCategory, selectPart, getCurrentHeight, setHeight, recalcMinYOffset, refreshTrackAfterEdit, playEditSound, getCursorGridPosition, findOverlappingParts, hasOverlappingParts, deletePartsAndRecord, updateKeyboardCamera, isKeyboardInputActive, TrackLoadError = n(6223).A, LoadingScreenUI = n(5302).A;
         editor_audioManager = new WeakMap,
         editor_lastEditSoundTime = new WeakMap,
         editor_localization = new WeakMap,
@@ -1148,7 +1148,7 @@
         editor_currentRotation = new WeakMap,
         editor_currentAxis = new WeakMap,
         editor_isLargeGrid = new WeakMap,
-        editor_isDeleteMode = new WeakMap,
+        editor_overlapMode = new WeakMap,
         editor_lastPlacement = new WeakMap,
         editor_lastDeletion = new WeakMap,
         editor_trackName = new WeakMap,
@@ -1323,27 +1323,32 @@
             const t = get(this, editor_cursorGridPos, "f")
               , e = []
               , n = [];
-            if (!get(this, editor_isDeleteMode, "f")) {
+            // ULTRAMIX
+            if (get(this, editor_overlapMode, "f") == 1) {
                 get(this, editor_activePlacement, "f").tiles.rotated(get(this, editor_currentRotation, "f"), get(this, editor_currentAxis, "f")).forEach(( (n, s, o) => {
                     const a = t.x + n
                       , r = t.y + s
                       , h = t.z + o
-                    //   , l = get(this, editor_track, "f").deletePartsAt(a, r, h);
-                    // for (const t of l)
-                    //     e.push({
-                    //         id: t.id,
-                    //         x: t.x,
-                    //         y: t.y,
-                    //         z: t.z,
-                    //         rotation: t.rotation,
-                    //         rotationAxis: t.rotationAxis,
-                    //         color: t.color,
-                    //         checkpointOrder: t.checkpointOrder,
-                    //         startOrder: t.startOrder
-                    //     })
+                      , l = get(this, editor_track, "f").deletePartsAt(a, r, h);
+                    for (const t of l)
+                        e.push({
+                            id: t.id,
+                            x: t.x,
+                            y: t.y,
+                            z: t.z,
+                            rotation: t.rotation,
+                            rotationAxis: t.rotationAxis,
+                            color: t.color,
+                            checkpointOrder: t.checkpointOrder,
+                            startOrder: t.startOrder
+                        })
                 }
                 ))
             }
+            else if (get(this, editor_overlapMode, "f") == 2) {
+                get(this, editor_activePlacement, "f").tiles.rotated(get(this, editor_currentRotation, "f"))
+            }
+
             for (const s of get(this, editor_activePlacement, "f").parts) {
                 let o = null;
                 null != get(this, editor_partRegistry, "f").getPart(s.id).configuration.startOffset && (o = get(this, editor_track, "f").getNextStartOrder());
@@ -1352,7 +1357,7 @@
                   , l = t.x + h[0]
                   , c = t.y + h[1]
                   , d = t.z + h[2];
-                if (get(this, editor_isDeleteMode, "f")) {
+                if (get(this, editor_overlapMode, "f") == 0) {
                     const t = get(this, editor_track, "f").deleteSpecificPart(s.id, l, c, d, a, r);
                     null != t && e.push({
                         id: t.id,
@@ -2072,7 +2077,7 @@
                 editor_currentRotation.set(this, 0),
                 editor_currentAxis.set(this, TrackPartRotationAxis.YPositive),
                 editor_isLargeGrid.set(this, !0),
-                editor_isDeleteMode.set(this, !1),
+                editor_overlapMode.set(this, 0),
                 editor_lastPlacement.set(this, null),
                 editor_lastDeletion.set(this, null),
                 editor_trackName.set(this, null),
@@ -2682,7 +2687,7 @@
                 }
                 )), "f"),
                 set(this, editor_sideToolbar, new EditorSideToolbarUI(get(this, editor_containerElement, "f"),get(this, editor_audioManager, "f"),get(this, editor_inputManager, "f"),(t => {
-                    set(this, editor_isDeleteMode, t, "f")
+                    set(this, editor_overlapMode, t, "f")
                 }
                 ),(t => {
                     set(this, editor_isLargeGrid, t, "f"),
@@ -3137,11 +3142,18 @@
                     if (null != t && null != get(this, editor_activePlacement, "f")) {
                         if (null == get(this, editor_lastOverlapCheckPos, "f") || get(this, editor_lastOverlapCheckPos, "f").x != t.x || get(this, editor_lastOverlapCheckPos, "f").y != t.y || get(this, editor_lastOverlapCheckPos, "f").z != t.z) {
                             let e;
-                            set(this, editor_lastOverlapCheckPos, t, "f"),
-                            e = !get(this, editor_isDeleteMode, "f") && get(this, Ft, "m", hasOverlappingParts).call(this, t, get(this, editor_activePlacement, "f").tiles),
-                            e ? (get(this, editor_ghostMaterial, "f").color.set(12303104),
-                            get(this, editor_tileIndicatorMaterial, "f").color.set(12303104)) : (get(this, editor_ghostMaterial, "f").color.set(187),
-                            get(this, editor_tileIndicatorMaterial, "f").color.set(187))
+                            set(this, editor_lastOverlapCheckPos, t, "f")
+                            // ULTRAMIX
+                            if (get(this, editor_overlapMode, "f") == 2) { // if ulramixing make blue always
+                                get(this, editor_ghostMaterial, "f").color.set(187),
+                                get(this, editor_tileIndicatorMaterial, "f").color.set(187)
+                            }
+                            else { // else then do normal
+                                e = get(this, editor_overlapMode, "f") == 1 && get(this, Ft, "m", hasOverlappingParts).call(this, t, get(this, editor_activePlacement, "f").tiles) // is true if parts are overlapping with cursor
+                                    e ? (get(this, editor_ghostMaterial, "f").color.set(12303104),
+                                    get(this, editor_tileIndicatorMaterial, "f").color.set(12303104)) : (get(this, editor_ghostMaterial, "f").color.set(187),
+                                    get(this, editor_tileIndicatorMaterial, "f").color.set(187))
+                            }
                         }
                     } else if (null != t && null != get(this, editor_selectedPartIndex, "f")) {
                         const e = get(this, editor_partEntries, "f")[get(this, editor_selectedPartIndex, "f")]
@@ -3151,11 +3163,12 @@
                             get(this, editor_tileIndicatorMaterial, "f").color.set(12255232)) : (get(this, editor_ghostMaterial, "f").color.set(12263970),
                             get(this, editor_tileIndicatorMaterial, "f").color.set(12263970));
                         else {
+                            // ULTRAMIX
                             let s, o;
-                            if (get(this, editor_isDeleteMode, "f"))
+                            if (get(this, editor_overlapMode, "f") == 1)
                                 s = n.some(( ({parts: n}) => n.some((n => n.id == e.id && n.x == t.x && n.y == t.y && n.z == t.z && n.rotation == get(this, editor_currentRotation, "f") && n.rotationAxis == get(this, editor_currentAxis, "f"))))),
                                 o = !1;
-                            else {
+                            else if (get(this, editor_overlapMode, "f") == 0) {
                                 s = !1;
                                 for (const {parts: a} of n)
                                     for (const n of a) {
@@ -3179,6 +3192,10 @@
                                         }
                                         o = !0
                                     }
+                            }
+                            else {
+                                o = !1
+                                s = !1
                             }
                             s ? (get(this, editor_ghostMaterial, "f").color.set(12303104),
                             get(this, editor_tileIndicatorMaterial, "f").color.set(12303104)) : o ? (get(this, editor_ghostMaterial, "f").color.set(48059),
@@ -3215,7 +3232,7 @@
                                     z: t.z
                                 }, "f"));
                             else if (null == get(this, editor_lastPlacement, "f") || get(this, editor_lastPlacement, "f").x != t.x || get(this, editor_lastPlacement, "f").y != t.y || get(this, editor_lastPlacement, "f").z != t.z || get(this, editor_lastPlacement, "f").id != e.id || get(this, editor_lastPlacement, "f").rotation != get(this, editor_currentRotation, "f") || get(this, editor_lastPlacement, "f").rotationAxis != get(this, editor_currentAxis, "f")) {
-                                if (get(this, editor_isDeleteMode, "f"))
+                                if (get(this, editor_overlapMode, "f") == 1)
                                     for (const {parts: o} of n) {
                                         const n = o.find((n => n.id == e.id && n.x == t.x && n.y == t.y && n.z == t.z && n.rotation == get(this, editor_currentRotation, "f") && n.rotationAxis == get(this, editor_currentAxis, "f")));
                                         null != n && null != get(this, editor_track, "f").deleteSpecificPart(n.id, n.x, n.y, n.z, n.rotation, n.rotationAxis) && s.push({
@@ -3230,35 +3247,35 @@
                                             startOrder: n.startOrder
                                         })
                                     }
-                                //thing thing
-                                // else
-                                //     for (const {parts: o} of n)
-                                //         for (const n of o)
-                                //             get(this, editor_partRegistry, "f").isPartCombinationAllowed({
-                                //                 id: e.id,
-                                //                 x: t.x,
-                                //                 y: t.y,
-                                //                 z: t.z,
-                                //                 rotation: get(this, editor_currentRotation, "f"),
-                                //                 rotationAxis: get(this, editor_currentAxis, "f")
-                                //             }, {
-                                //                 id: n.id,
-                                //                 x: n.x,
-                                //                 y: n.y,
-                                //                 z: n.z,
-                                //                 rotation: n.rotation,
-                                //                 rotationAxis: n.rotationAxis
-                                //             }) || null != get(this, editor_track, "f").deleteSpecificPart(n.id, n.x, n.y, n.z, n.rotation, n.rotationAxis) && s.push({
-                                //                 id: n.id,
-                                //                 x: n.x,
-                                //                 y: n.y,
-                                //                 z: n.z,
-                                //                 rotation: n.rotation,
-                                //                 rotationAxis: n.rotationAxis,
-                                //                 color: n.color,
-                                //                 checkpointOrder: n.checkpointOrder,
-                                //                 startOrder: n.startOrder
-                                //             });
+                                // ULTRAMIX
+                                else if (get(this, editor_overlapMode, "f") == 0)
+                                    for (const {parts: o} of n)
+                                        for (const n of o)
+                                            get(this, editor_partRegistry, "f").isPartCombinationAllowed({
+                                                id: e.id,
+                                                x: t.x,
+                                                y: t.y,
+                                                z: t.z,
+                                                rotation: get(this, editor_currentRotation, "f"),
+                                                rotationAxis: get(this, editor_currentAxis, "f")
+                                            }, {
+                                                id: n.id,
+                                                x: n.x,
+                                                y: n.y,
+                                                z: n.z,
+                                                rotation: n.rotation,
+                                                rotationAxis: n.rotationAxis
+                                            }) || null != get(this, editor_track, "f").deleteSpecificPart(n.id, n.x, n.y, n.z, n.rotation, n.rotationAxis) && s.push({
+                                                id: n.id,
+                                                x: n.x,
+                                                y: n.y,
+                                                z: n.z,
+                                                rotation: n.rotation,
+                                                rotationAxis: n.rotationAxis,
+                                                color: n.color,
+                                                checkpointOrder: n.checkpointOrder,
+                                                startOrder: n.startOrder
+                                            });
                                 let a = null;
                                 e.isCheckpoint && (a = get(this, editor_checkpointOrderUI, "f").checkpointOrder);
                                 let r = null;
