@@ -3149,7 +3149,7 @@
                                 get(this, editor_tileIndicatorMaterial, "f").color.set(187)
                             }
                             else { // else then do normal
-                                e = get(this, editor_overlapMode, "f") == 1 && get(this, Ft, "m", hasOverlappingParts).call(this, t, get(this, editor_activePlacement, "f").tiles) // is true if parts are overlapping with cursor
+                                e = get(this, editor_overlapMode, "f") == 0 && get(this, Ft, "m", hasOverlappingParts).call(this, t, get(this, editor_activePlacement, "f").tiles) // is true if parts are overlapping with cursor
                                     e ? (get(this, editor_ghostMaterial, "f").color.set(12303104),
                                     get(this, editor_tileIndicatorMaterial, "f").color.set(12303104)) : (get(this, editor_ghostMaterial, "f").color.set(187),
                                     get(this, editor_tileIndicatorMaterial, "f").color.set(187))
