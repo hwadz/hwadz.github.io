@@ -1,1 +1,52 @@
-test test 123
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>hwadz — PolyTrack mods</title>
+<style>
+  @font-face { font-family: ForcedSquare; src: url('tweaks/forced_square.woff2') format('woff2'); font-display: swap; }
+  :root { --bg:#28346a; --card:#1c2550; --card-hover:#243066; --text:#eef1ff; --muted:#a8b2e0; --line:#4756a0; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:48px 20px 64px; background:var(--bg); color:var(--text);
+         font-family: ForcedSquare, "Trebuchet MS", system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 44px; margin: 0 0 6px; font-weight: normal; letter-spacing: 1px; }
+  .sub { color: var(--muted); margin: 0 0 36px; font-size: 19px; }
+  a.card { display:block; text-decoration:none; color:inherit; background:var(--card); border:2px solid var(--line);
+           padding:20px 22px; margin-bottom:18px; transition: background .15s ease, transform .15s ease; }
+  a.card:hover { background:var(--card-hover); transform: translateY(-2px); }
+  a.card h2 { margin:0 0 6px; font-size:28px; font-weight:normal; }
+  a.card p { margin:0; color:var(--muted); font-size:18px; line-height:1.45; }
+  .tag { display:inline-block; margin-top:10px; font-size:15px; color:var(--muted); border:1px solid var(--line); padding:2px 8px; }
+  footer { margin-top:40px; color:var(--muted); font-size:15px; line-height:1.6; border-top:1px solid var(--line); padding-top:16px; }
+  footer a { color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>PolyTrack mods</h1>
+  <p class="sub">Playable in the browser. Click one and go.</p>
+
+  <a class="card" href="tweaks/">
+    <h2>Tweaks</h2>
+    <p>Faster loading, smoother frames, a pseudo V-Sync readout, progressive copy/paste, lighter
+       replays — and a collaborative editor where several people build one track together and can
+       watch each other test drive it.</p>
+    <span class="tag">PolyTrack 0.6.2</span>
+  </a>
+
+  <a class="card" href="ultramix/">
+    <h2>Ultramix</h2>
+    <p>The earlier mix — everything thrown together.</p>
+  </a>
+
+  <footer>
+    Leaderboards, verified runs and official multiplayer races only work in the real game: those
+    servers answer PolyTrack's own site, not this one. Times set here stay in your browser.<br><br>
+    Fan mods of <a href="https://www.kodub.com/apps/polytrack">PolyTrack</a> by Kodub. Not affiliated
+    with or endorsed by Kodub.
+  </footer>
+</main>
+</body>
+</html>
