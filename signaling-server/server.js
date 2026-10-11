@@ -22,6 +22,7 @@
 const http = require('http');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
+const leaderboard = require('./leaderboard');
 
 const PORT = Number(process.env.PORT || 8787);
 const INVITE_MS = Math.max(1, Number(process.env.INVITE_MINUTES || 60)) * 60000;
@@ -97,12 +98,23 @@ class Session {
 }
 
 const server = http.createServer((req, res) => {
-  if (req.url === '/' || req.url === '/health') {
+  const url = new URL(req.url || '/', 'http://localhost');
+  const pathname = url.pathname;
+  if (pathname === '/' || pathname === '/health') {
+    const lb = leaderboard.summary();
     res.writeHead(200, { 'content-type': 'text/plain' });
-    res.end('polytrack collab signaling: ok (' + byCode.size + ' open invites)\n');
+    res.end('polytrack collab signaling: ok (' + byCode.size + ' open invites)\n'
+      + 'leaderboard: ' + lb.entries + ' times on ' + lb.tracks + ' tracks'
+      + (lb.file ? '' : ' (not persisted)') + ', no run verification\n');
     return;
   }
-  res.writeHead(404).end();
+  // the game's own v6 endpoints, served for web builds that point PTApiBase here
+  leaderboard.handle(req, res, pathname, url.searchParams).then((taken) => {
+    if (!taken) res.writeHead(404).end();
+  }).catch((e) => {
+    console.warn('leaderboard: unhandled ' + e.message);
+    try { res.writeHead(500).end(); } catch {}
+  });
 });
 
 const hostServer = new WebSocketServer({ noServer: true, maxPayload: MAX_MESSAGE });
@@ -253,6 +265,9 @@ joinServer.on('connection', (ws) => {
 });
 
 server.listen(PORT, () => {
+  const lb = leaderboard.summary();
+  console.log('leaderboard: ' + lb.entries + ' times on ' + lb.tracks + ' tracks'
+    + (lb.file ? ' in ' + lb.file : ' (not persisted)'));
   console.log('collab signaling listening on ' + PORT +
     ' (invites last ' + Math.round(INVITE_MS / 60000) + ' min, max ' + MAX_SESSIONS + ' hosts' +
     (ALLOWED_ORIGINS.length ? ', origins: ' + ALLOWED_ORIGINS.join(' ') : '') + ')');

@@ -17,7 +17,30 @@
  * behind a strict NAT — add a TURN server (with `username` and `credential`) if you want it to work for
  * everyone.
  */
-window.PTCollabConfig = {
+window.PTCollabConfig = Object.assign({
   signaling: null,
   iceServers: [],
-};
+}, window.PTCollabConfig || {});
+
+/*
+ * Leaderboards, profiles and saved runs.
+ *
+ * Desktop build: leave `apiBase` null and the game talks to Kodub's backend as it always has.
+ *
+ * Web build: Kodub's backend only answers Kodub's own domains, so the official leaderboard is out of
+ * reach from another site - that is their access control, not a bug to route around. You can instead
+ * run the community leaderboard in web/signaling-server/ (the same server as the signaling one) and
+ * point this at it:
+ *
+ *   window.PTLeaderboardConfig = {
+ *     apiBase: null,
+ *     label: 'Tweaks community leaderboard',
+ *   };
+ *
+ * Times on it are unverified and separate from the official boards, and the leaderboard screen says
+ * so while it is in use.
+ */
+window.PTLeaderboardConfig = Object.assign({
+  apiBase: null,
+  label: null,
+}, window.PTLeaderboardConfig || {});
