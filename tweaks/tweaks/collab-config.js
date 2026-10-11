@@ -9,7 +9,7 @@
  * own server instead (see web/signaling-server/ in the mod source):
  *
  *   window.PTCollabConfig = {
- *     signaling: null,
+ *     signaling: 'wss://your-server.example.com',
  *     iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }],
  *   };
  *
@@ -33,7 +33,7 @@ window.PTCollabConfig = Object.assign({
  * point this at it:
  *
  *   window.PTLeaderboardConfig = {
- *     apiBase: null,
+ *     apiBase: 'https://your-server.example.com/',
  *     label: 'Tweaks community leaderboard',
  *   };
  *

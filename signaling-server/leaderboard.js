@@ -37,7 +37,7 @@ const MAX_NICKNAME = 50;
 const MAX_CAR_STYLE = 256;
 const MAX_BODY = 64 * 1024;
 const MAX_IDS = 32;
-const SAVE_DEBOUNCE_MS = 2000;
+const SAVE_DEBOUNCE_MS = 250;        // coalesces a burst without risking much on a hard kill
 const READS_PER_MINUTE = 240;
 const WRITES_PER_MINUTE = 20;
 const PENDING = 0;                  // the game's VerifiedState.Pending
@@ -222,6 +222,11 @@ async function handle(req, res, pathname, query) {
     if (route === 'user' && req.method === 'GET') return user(res, query);
     if (route === 'user' && write) return await saveUser(req, res);
     if (route === 'iceServers' && req.method === 'GET') { json(res, 200, ICE_SERVERS); return true; }
+    // 0.6.3 asks for a Track of the Week on startup; this server runs none, which is a valid answer
+    if (route === 'trackOfTheWeek' && req.method === 'GET') {
+      json(res, 200, { serverTime: new Date().toISOString(), current: null });
+      return true;
+    }
     if (route === 'multiplayer/host' || route === 'multiplayer/join') {
       json(res, 501, { error: 'this server does not host multiplayer races' });
       return true;
