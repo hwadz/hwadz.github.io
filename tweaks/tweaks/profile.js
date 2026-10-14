@@ -13,7 +13,9 @@
 
   const CONCURRENCY = 5;             // requests in flight at once
   const TOTALS_KEY = 'pt-track-totals-v1';
-  const TOTALS_TTL = 24 * 3600 * 1000;
+  const TOTALS_TTL = 24 * 3600 * 1000;      // how long a track's field size is good for
+  const RECORD_TTL = 10 * 60 * 1000;        // how long its record time is good for
+  const PROFILE_TTL = 5 * 60 * 1000;        // how long a compiled profile is good for
   const log = (...a) => console.log('[profile]', ...a);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   // the API client hands times back as the game's Time object on some paths and a plain number on others
@@ -76,6 +78,7 @@ table.pt-prof-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,2
     records: {},            // trackId -> record time, for the gap shown on each row
     recordPending: {},
     gapRows: [],            // the gap spans on the leaderboard page currently shown
+    current: null,          // whose profile is on screen, so Refresh knows what to re-ask
     sort: { key: 'position', dir: 1 },
     overlay: null,
     run: 0,
@@ -145,11 +148,17 @@ table.pt-prof-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,2
       if (trackId === this.trackId) for (const r of this.gapRows) this.paintGap(r.span, r.frames);
     },
 
-    /** Asks for the record once per track, only if a page other than the first was opened first. */
+    /**
+     * Makes sure the track's record time is both known and recent. A known-but-old one is shown
+     * straight away and replaced when the fresh answer lands, so the gaps are never blank for long
+     * and never silently a day out of date.
+     */
     ensureRecord(trackId) {
-      if (this.records[trackId] != null || this.recordPending[trackId]) return;
+      if (this.recordPending[trackId]) return;
       const cached = this.totals[trackId];
-      if (cached && cached.wr != null && Date.now() - cached.at < TOTALS_TTL) return this.noteRecord(trackId, cached.wr);
+      const known = cached && cached.wr != null;
+      if (known && Date.now() - cached.at < RECORD_TTL) return this.noteRecord(trackId, cached.wr);
+      if (known) this.noteRecord(trackId, cached.wr);
       this.recordPending[trackId] = true;
       this.topEntry(trackId).then((top) => {
         if (top) this.noteRecord(trackId, top);
@@ -178,11 +187,18 @@ table.pt-prof-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,2
 
     saveTotals() { try { localStorage.setItem(TOTALS_KEY, JSON.stringify(this.totals)); } catch {} },
 
-    /** The top of a track's leaderboard: its size and the record time, cached for a day. */
-    async headFor(trackId) {
+    /**
+     * The top of a track's leaderboard: how many players are on it, and the record time. The field
+     * size barely moves, so it is kept for a day; the record can fall any minute, so when a caller
+     * needs that (the gap on a leaderboard row) a ten-minute-old answer is re-asked.
+     */
+    async headFor(trackId, needRecord) {
       const cached = this.totals[trackId];
+      const age = cached ? Date.now() - cached.at : Infinity;
       // a cache entry written before this version has no record time in it, so ask once more
-      if (cached && cached.n != null && cached.wr != null && Date.now() - cached.at < TOTALS_TTL) return cached;
+      const fresh = cached && cached.n != null && cached.wr != null
+        && age < (needRecord ? RECORD_TTL : TOTALS_TTL);
+      if (fresh) return cached;
       let token = '';
       try { token = window.__ptProfiles.getCurrentUserProfile().tokenHash; } catch {}
       const res = await this.api().getLeaderboard(token, trackId, 0, 1, false);
@@ -196,21 +212,35 @@ table.pt-prof-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,2
     },
 
     /** How many players are on a track's leaderboard — shared by every profile. */
-    async totalFor(track) { return (await this.headFor(track.id)).n; },
+    async totalFor(track) { return (await this.headFor(track.id, false)).n; },
 
     /** The record time on a track, for the gap shown on each leaderboard row. */
     async topEntry(trackId) {
-      const head = await this.headFor(trackId);
+      const head = await this.headFor(trackId, true);
       this.saveTotals();
       return head.wr;
     },
 
-    async open(userId, nickname, countryCode) {
+    /** Forget a compiled profile, so the next open rebuilds it. */
+    invalidate(userId) { if (userId) this.cache.delete(userId); },
+
+    /** Your own time changed, so your own profile is out of date. */
+    invalidateSelf() {
+      try { this.invalidate(window.__ptProfiles.getCurrentUserProfile().tokenHash); } catch { }
+    },
+
+    async open(userId, nickname, countryCode, force) {
       this.build();
       this.overlay.classList.remove('hidden');
+      this.current = { userId, nickname, countryCode };
       const run = ++this.run;
-      const cached = this.cache.get(userId);
-      this.render({ userId, nickname, countryCode, rows: cached ? cached.rows : [], done: !!cached, failed: cached ? cached.failed : 0, total: cached ? cached.rows.length : 0, pending: 0 });
+      if (force) this.cache.delete(userId);
+      const held = this.cache.get(userId);
+      // positions move and your own time changes, so a compiled profile is only good for a few minutes
+      const cached = held && Date.now() - held.at < PROFILE_TTL ? held : null;
+      this.render({ userId, nickname, countryCode, rows: cached ? cached.rows : [], done: !!cached,
+        failed: cached ? cached.failed : 0, total: cached ? cached.rows.length : 0, pending: 0,
+        cachedAt: cached ? cached.at : null });
       if (cached) return;
 
       const tracks = this.trackList();
@@ -241,7 +271,7 @@ table.pt-prof-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,2
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, tracks.length) }, worker));
       if (run !== this.run) return;
       this.saveTotals();
-      this.cache.set(userId, { rows, failed });
+      this.cache.set(userId, { rows, failed, at: Date.now() });
       this.render({ userId, nickname, countryCode, rows, done: true, failed, scanned: tracks.length, scannedOf: tracks.length });
     },
 
@@ -253,6 +283,13 @@ table.pt-prof-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,2
       const o = el('div', 'pt-prof-overlay hidden');
       const head = el('div', 'pt-prof-head');
       head.appendChild(el('h1', null, 'Profile'));
+      const refresh = el('button', 'button', 'Refresh');
+      refresh.title = 'Ask the leaderboard again (it is cached for a few minutes)';
+      refresh.addEventListener('click', () => {
+        const c = this.current;
+        if (c) this.open(c.userId, c.nickname, c.countryCode, true);
+      });
+      head.appendChild(refresh);
       const close = el('button', 'button', 'Close');
       close.addEventListener('click', () => this.close());
       head.appendChild(close);
@@ -304,6 +341,12 @@ table.pt-prof-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,2
       }
 
       if (state.error) { body.appendChild(el('p', 'pt-prof-note', state.error)); return; }
+
+      if (state.done && state.cachedAt) {
+        const age = Math.max(0, Date.now() - state.cachedAt);
+        const how = age < 45000 ? 'a moment ago' : Math.round(age / 60000) + ' min ago';
+        body.appendChild(el('p', 'pt-prof-note', 'Asked ' + how + '. Press Refresh for the current numbers.'));
+      }
 
       if (!state.done) {
         const bar = el('div', 'pt-prof-progress');
@@ -372,7 +415,8 @@ table.pt-prof-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,2
           { key: 'track', label: 'Track', dir: 1, of: (r) => r.track.toLowerCase() },
           { key: 'position', label: 'Placing', dir: 1, of: (r) => r.position },
           { key: 'frames', label: 'Time', dir: 1, of: (r) => r.frames },
-          { key: 'total', label: 'Of players', dir: -1, of: (r) => (r.total == null ? -1 : r.total) },
+          // sorted by standing, not by field size: 10th of 7 000 is a worse result than 100th of 7 million
+          { key: 'standing', label: 'Standing', dir: 1, of: (r) => (r.total ? r.position / r.total : Infinity) },
           { key: 'verified', label: 'Verified', dir: -1, of: (r) => (r.verified === 1 ? 1 : 0) },
         ];
         for (const col of COLUMNS) {
@@ -399,7 +443,7 @@ table.pt-prof-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,2
           tr.appendChild(el('td', null, r.track + (r.type === 'community' ? ' (community)' : '')));
           tr.appendChild(el('td', r.position === 1 ? 'pt-prof-gold' : null, '#' + num(r.position)));
           tr.appendChild(el('td', null, fmtTime(r.frames)));
-          tr.appendChild(el('td', null, r.total ? num(r.total) + ' · ' + percentile(r.position / r.total) : '—'));
+          tr.appendChild(el('td', null, r.total ? percentile(r.position / r.total) + ' · ' + num(r.total) : '—'));
           tr.appendChild(el('td', null, r.verified === 1 ? 'verified' : ''));
           table.appendChild(tr);
         }

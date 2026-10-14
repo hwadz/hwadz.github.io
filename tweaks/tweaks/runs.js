@@ -341,6 +341,9 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
       };
       Core.recordAttempt(this.stats, attempt);
       this.queueSave();
+      // your own leaderboard entry just changed, so a profile compiled earlier is stale
+      if (a.finished && (previousBest == null || attempt.frames < previousBest)
+        && window.PTProfile && window.PTProfile.invalidateSelf) window.PTProfile.invalidateSelf();
 
       // keep the run so it can be clipped, and clip it now if every run is being recorded
       const recording = (() => { try { return this.car.getRecording(); } catch { return null; } })();
