@@ -121,6 +121,9 @@
         case 'empty':
           this.toast('Savestate ' + (msg.slot + 1) + ' is empty — press ' + this.keyName(this.prefs.save) + ' first.');
           break;
+        case 'info':
+          if (window.PTDiag && window.PTDiag.onWorkerInfo) window.PTDiag.onWorkerInfo(msg);
+          break;
         case 'forgot':
           this.filled[msg.slot] = null;
           this.toast(msg.freed ? 'Savestates cleared, memory released.' : 'Savestate ' + (msg.slot + 1) + ' cleared.');
