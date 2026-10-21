@@ -207,7 +207,7 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
     init() {
       this.stats = loadJSON(STATS_KEY, null) || Core.emptyStats();
       this.clips = loadJSON(CLIPS_KEY, null) || [];
-      this.prefs = Object.assign({ clipKey: 'F9', statsKey: 'F8', recordEvery: false, clipRecords: true }, loadJSON(PREFS_KEY, {}));
+      this.prefs = Object.assign({ recordEvery: false, clipRecords: true }, loadJSON(PREFS_KEY, {}));
       this.stats.totals.sessions = (this.stats.totals.sessions || 0) + 1;
       this.injectCss();
       window.addEventListener('keydown', (e) => this.onKey(e), true);
@@ -547,9 +547,9 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
     onKey(e) {
       const target = e.target;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-      if (this.rebinding) { e.preventDefault(); e.stopPropagation(); this.finishRebind(e.code); return; }
-      if (e.code === this.prefs.clipKey) { e.preventDefault(); this.saveClipNow(); return; }
-      if (e.code === this.prefs.statsKey) { e.preventDefault(); this.toggle(); return; }
+      const K = window.PTKeys;
+      if (K && K.is(e, 'TweaksSaveClip')) { e.preventDefault(); this.saveClipNow(); return; }
+      if (K && K.is(e, 'TweaksStatistics')) { e.preventDefault(); this.toggle(); return; }
       if (e.code === 'Escape' && this.overlay && !this.overlay.classList.contains('hidden')) { e.preventDefault(); e.stopPropagation(); this.close(); }
     },
 
@@ -789,12 +789,6 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
       const every = el('button', 'button', (this.prefs.recordEvery ? '☑' : '☐') + ' Record every run');
       every.addEventListener('click', () => { this.prefs.recordEvery = !this.prefs.recordEvery; this.savePrefs(); this.render(); });
       row.appendChild(every);
-      const bindClip = el('button', 'button', 'Clip key: ' + this.keyName(this.prefs.clipKey));
-      bindClip.addEventListener('click', () => this.startRebind('clipKey', bindClip));
-      row.appendChild(bindClip);
-      const bindStats = el('button', 'button', 'Statistics key: ' + this.keyName(this.prefs.statsKey));
-      bindStats.addEventListener('click', () => this.startRebind('statsKey', bindStats));
-      row.appendChild(bindStats);
       const records = el('button', 'button', (this.prefs.clipRecords ? '☑' : '☐') + ' Clip new records');
       records.addEventListener('click', () => { this.prefs.clipRecords = !this.prefs.clipRecords; this.savePrefs(); this.render(); });
       row.appendChild(records);
@@ -802,8 +796,12 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
       clipNow.addEventListener('click', () => this.saveClipNow());
       row.appendChild(clipNow);
       body.appendChild(row);
-      body.appendChild(el('p', 'pt-runs-note', 'Press the clip key while driving to save the run so far, or after a run to save the one you just did.' + String.fromCharCode(10)
+      const clipNote = el('p', 'pt-runs-note', 'Press ');
+      this.appendCaps(clipNote, 'TweaksSaveClip');
+      clipNote.appendChild(document.createTextNode(' while driving to save the run so far, or after a run to save the one you just did. '
         + 'New records are clipped automatically, one per track.'));
+      body.appendChild(clipNote);
+      body.appendChild(this.keysNote());
 
       const P = window.PTPractice;
       if (P && P.prefs) {
@@ -816,13 +814,17 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
         const panel = el('button', 'button', (P.prefs.panel ? '☑' : '☐') + ' Show the practice readout');
         panel.addEventListener('click', () => { P.prefs.panel = !P.prefs.panel; P.savePrefs(); if (P.show) P.show(); if (P.draw) P.draw(); this.render(); });
         prow.appendChild(panel);
-        for (const [which, label] of [['slower', 'Slower'], ['faster', 'Faster'], ['normal', 'Normal speed'],
-          ['save', 'Save state'], ['load', 'Load state'], ['forget', 'Clear state'], ['cycle', 'Next slot']]) {
-          const b = el('button', 'button', label + ': ' + this.keyName(P.prefs[which]));
-          b.addEventListener('click', () => this.startRebind(which, b, P));
-          prow.appendChild(b);
-        }
         body.appendChild(prow);
+        const pkeys = el('p', 'pt-runs-note', 'The speed is set in the editor, next to Test. While test driving: ');
+        [['TweaksPracticeSlower', 'slower'], ['TweaksPracticeFaster', 'faster'], ['TweaksPracticeNormal', 'normal speed'],
+          ['TweaksPracticeSave', 'save state'], ['TweaksPracticeLoad', 'load state'], ['TweaksPracticeForget', 'clear state'],
+          ['TweaksPracticeSlot', 'next slot']].forEach(([name, what], i) => {
+          if (i) pkeys.appendChild(document.createTextNode(',  '));
+          this.appendCaps(pkeys, name);
+          pkeys.appendChild(document.createTextNode(' ' + what));
+        });
+        pkeys.appendChild(document.createTextNode('.'));
+        body.appendChild(pkeys);
       }
 
       const imp = this.card(body, 'Import a clip');
@@ -880,25 +882,12 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
       } catch (e) { this.toast('Could not save that file.'); }
     },
 
-    keyName(code) {
-      return String(code || '')
-        .replace(/^Key|^Digit/, '')
-        .replace('BracketLeft', '[').replace('BracketRight', ']').replace('Backslash', '\\')
-        .replace('Semicolon', ';').replace('Quote', "'").replace('Comma', ',').replace('Period', '.');
+    appendCaps(parent, name) {
+      if (window.PTKeys) parent.appendChild(window.PTKeys.caps(name));
+      else parent.appendChild(document.createTextNode('?'));
     },
-    startRebind(which, button, owner) {
-      this.rebinding = { which, button, old: button.textContent, owner: owner || null };
-      button.textContent = 'Press a key…';
-    },
-    finishRebind(code) {
-      const r = this.rebinding;
-      this.rebinding = null;
-      if (!r) return;
-      if (code === 'Escape') { r.button.textContent = r.old; return; }
-      if (r.owner) { r.owner.prefs[r.which] = code; if (r.owner.savePrefs) r.owner.savePrefs(); }
-      else { this.prefs[r.which] = code; this.savePrefs(); }
-      this.render();
-      this.toast('Key set to ' + this.keyName(code));
+    keysNote() {
+      return el('p', 'pt-runs-note', 'Keys are set with the game’s own, in Settings → Controls → Tweaks.');
     },
   };
 

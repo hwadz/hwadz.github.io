@@ -39,6 +39,7 @@
 .pt-prof-btn { padding:2px 10px; font-size:15px; line-height:1.2; background:var(--button-color,#2b3570); color:var(--text-color,#eef1ff);
   border:none; cursor:pointer; pointer-events:auto; }
 .pt-prof-btn:hover { background:var(--button-hover-color,#3a4a9a); }
+.pt-prof-line { display:flex; gap:8px; align-items:baseline; justify-content:flex-end; }
 .pt-prof-gap { font-size:16px; opacity:0.85; }
 .pt-prof-gap.behind { color:#ff8f8f; }
 .pt-prof-gap.ahead { color:#8ce58c; }
@@ -109,7 +110,9 @@ table.pt-prof-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,2
         const theirs = entry ? frames(entry.frames) : null;
         if (position === 1 && theirs != null && this.trackId) this.noteRecord(this.trackId, theirs);
         const gap = el('span', 'pt-prof-gap');
-        slot.appendChild(gap);
+        const line = el('div', 'pt-prof-line');          // the gap, and the run's z-score once known (zscore.js)
+        line.appendChild(gap);
+        slot.appendChild(line);
         if (theirs != null) {
           this.gapRows.push({ span: gap, frames: theirs });
           this.paintGap(gap, theirs);

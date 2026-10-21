@@ -1,5 +1,6 @@
 {
-	"name": "PolyTrack",
+	"name": "Ultramix (unofficial PolyTrack mod)",
+	"short_name": "Ultramix",
 	"icons": [
 		{
 			"src": "images/icon.svg",

@@ -1,8 +1,9 @@
 /*
  * PolyTrack Tweaks — performance diagnostics.
  *
- * F10 shows a small overlay with what a frame costs and the numbers that would grow if something in
- * the game were leaking: objects and cameras in the 3D scene, draw calls, GPU-side geometries,
+ * The diagnostics key (F10 unless changed in Settings → Controls → Tweaks) shows a small overlay
+ * with what a frame costs and the numbers that would grow if something in the game were leaking:
+ * objects and cameras in the 3D scene, draw calls, GPU-side geometries,
  * textures and shader programs, the JavaScript heap, the page's DOM size, and cars in the physics
  * worker. While it is on, it also writes one line a minute to a log you can copy or save.
  *
@@ -49,7 +50,7 @@
       st.id = 'pt-diag-css'; st.textContent = CSS;
       document.head.appendChild(st);
       window.addEventListener('keydown', (e) => {
-        if (e.code !== 'F10') return;
+        if (!window.PTKeys || !window.PTKeys.is(e, 'TweaksDiagnostics')) return;
         const t = e.target;
         if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
         e.preventDefault();
@@ -135,7 +136,7 @@
         d.appendChild(document.createTextNode(value));
         this.text.appendChild(d);
       };
-      line('PT diagnostics', '  (F10 to hide)');
+      line('PT diagnostics', '  (' + (window.PTKeys ? window.PTKeys.label('TweaksDiagnostics') : 'F10') + ' to hide)');
       line('session', fmtDur(Date.now() - this.startedAt));
       line('frame', 'CPU ' + n(s.cpu) + ' ms  GPU ' + n(s.gpu) + ' ms  every ' + n(s.interval) + ' ms');
       line('scene', i(s.objects) + ' objects · ' + i(s.cameras) + ' cameras · ' + i(s.calls) + ' draw calls · ' + i(s.triangles) + ' tris');

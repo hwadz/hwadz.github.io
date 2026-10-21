@@ -1,6 +1,16 @@
 # hwadz.github.io
 hi this is random stuff ive made stuff idk blah blah blah
 
+> **Unofficial mods.** Tweaks and Ultramix are unofficial versions of PolyTrack, a game by
+> [Kodub.com](https://www.kodub.com). They are not affiliated with, endorsed by, or sponsored by
+> Kodub.com, CrazyGames, Poki or itch.io. Play the original game on CrazyGames:
+> https://www.crazygames.com/game/polytrack
+>
+> They follow section 4 of the [PolyTrack Terms of Service](https://www.kodub.com/terms/polytrack):
+> free, no ads or monetization of any kind, the game's own links left as they are, the in-game
+> notice ("Unofficial Tweaks mod by hwadz. For the original version please visit: …"), and the pages
+> ask search engines not to index them.
+
 ## what's here
 
 - `tweaks/` — PolyTrack Tweaks 0.6.3, web build. Play at https://hwadz.github.io/tweaks/
