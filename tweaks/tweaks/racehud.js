@@ -29,33 +29,41 @@
   };
 
   const CSS = `
-.pt-split { position:absolute; left:50%; top:22px; z-index:31; display:flex; flex-direction:column; align-items:center; gap:4px;
-  transform:translateX(-50%) scale(0.92); opacity:0; pointer-events:none; font-family:ForcedSquare, system-ui, sans-serif;
-  color:#fff; transition:opacity 0.12s ease-out, transform 0.12s ease-out; }
-.pt-split.low { top:112px; }
-.pt-split.show { opacity:1; transform:translateX(-50%) scale(1); }
-.pt-split.fade { opacity:0; transition:opacity 0.45s ease-in; }
-.pt-split .main { display:flex; align-items:stretch; background:rgba(12,16,38,0.82);
-  clip-path:polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); }
-.pt-split .cp { display:flex; align-items:center; padding:0 12px 0 16px; font-size:19px; color:#cfd6ff; background:rgba(255,255,255,0.10); }
-.pt-split .time { padding:3px 14px 1px 12px; font-size:36px; line-height:1.15; letter-spacing:1px; }
-.pt-split .speed { display:flex; align-items:center; padding:0 18px 0 12px; font-size:21px; color:#dfe4ff; border-left:1px solid rgba(255,255,255,0.15); }
-.pt-split .speed small { font-size:13px; opacity:0.7; margin-left:4px; }
-.pt-split .deltas { display:flex; gap:6px; }
-.pt-split .delta { padding:1px 16px; font-size:27px; line-height:1.2; clip-path:polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
-.pt-split .delta.sp { font-size:19px; display:flex; align-items:center; }
-.pt-split .delta.ahead { background:#2266dd; }
-.pt-split .delta.behind { background:#d33a3a; }
-.pt-split .delta.level { background:#5b6178; }
-.pt-split .ref { font-size:14px; opacity:0.85; text-shadow:0 0 4px #000, 0 0 2px #000; }
+/* a split hangs from the top edge like the game's own timer, and drops in */
+.pt-split { position:absolute; left:50%; top:0; z-index:31; display:flex; flex-direction:column; align-items:center;
+  line-height:1; color:var(--text-color); pointer-events:none; opacity:0; transform:translate(-50%, -100%);
+  transition:transform 0.15s ease-out, opacity 0.15s ease-out; }
+.pt-split.low { top:108px; transform:translate(-50%, -8px); }
+.pt-split.show { opacity:1; transform:translate(-50%, 0); }
+.pt-split.show.fade { opacity:0; transition:opacity 0.45s ease-in; }
+.pt-split > .main { display:flex; align-items:center; gap:6px; padding:8px 10px; background-color:var(--surface-color); opacity:0.9;
+  clip-path:polygon(0 0, 100% 0, calc(100% - 8px) 100%, 8px 100%); }
+.pt-split.low > .main { clip-path:polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
+.pt-split .cp { padding:0 8px 0 14px; font-size:26px; opacity:0.75; }
+.pt-split .time, .pt-split .speed { padding:4px 16px; background-color:var(--surface-tertiary-color);
+  clip-path:polygon(0 0, 100% 0, calc(100% - 6px) 100%, 6px 100%); }
+.pt-split .time { font-size:40px; }
+.pt-split .speed { font-size:28px; }
+.pt-split .speed small { margin-left:0.25em; font-size:0.5em; opacity:0.5; }
+.pt-split .deltas { display:flex; align-items:baseline; gap:24px; margin-top:6px; }
+.pt-split .delta, .pt-split .ref { text-shadow:1px 1px 1px var(--surface-color), -1px 1px 1px var(--surface-color), -1px -1px 1px var(--surface-color), 1px -1px 1px var(--surface-color); }
+.pt-split .delta { font-size:32px; }
+.pt-split .delta.sp { font-size:24px; }
+.pt-split .delta.ahead { color:#5f5; }
+.pt-split .delta.behind { color:#f55; }
+.pt-split .ref { margin-top:4px; font-size:18px; opacity:0.8; }
 
-.pt-session { position:absolute; right:12px; top:38px; z-index:30; pointer-events:none; display:flex; align-items:baseline; gap:7px;
-  padding:3px 10px; background:rgba(12,16,38,0.55); color:#eef1ff; font-family:ForcedSquare, system-ui, sans-serif;
-  clip-path:polygon(6px 0, 100% 0, 100% 100%, 0 100%); }
-.pt-session.low { top:84px; }
-.pt-session .lbl { font-size:11px; letter-spacing:1px; opacity:0.65; }
-.pt-session .t { font-size:20px; }
+/* the session timer: a box in the top right corner, like the speedometer when it sits up there */
+.pt-session { position:absolute; right:var(--safe-area-horizontal); top:0; z-index:30; padding:8px 10px; line-height:1;
+  color:var(--text-color); background-color:var(--surface-color); opacity:0.9; pointer-events:none;
+  clip-path:polygon(0 0, 100% 0, 100% 100%, 8px 100%); }
+.pt-session > div { display:flex; align-items:baseline; gap:8px; padding:5px 12px 5px 18px; background-color:var(--surface-tertiary-color);
+  clip-path:polygon(0 0, 100% 0, 100% 100%, 6px 100%); }
+.pt-session .lbl { font-size:16px; opacity:0.5; }
+.pt-session .t { font-size:28px; }
 .pt-session.hidden { display:none; }
+/* the game's "loading ghosts" line lives in that corner too: under the timer while it is up */
+body.pt-session-on .ghost-loading-ui:not(.down) { top:52px; }
 `;
 
   /** The ghost the game measures you against: the quickest, your own best on a tie (its _s). */
@@ -138,6 +146,7 @@
       clearTimeout(this.hideTimer); clearTimeout(this.fadeTimer);
       if (this.popup) { this.popup.remove(); this.popup = null; }
       if (this.session) { this.session.remove(); this.session = null; }
+      document.body.classList.remove('pt-session-on');
       this.ctx = null;
     },
 
@@ -160,26 +169,30 @@
     sessionTick() {
       const c = this.ctx;
       const on = this.setting('TweaksSessionTimer', 'true') !== 'false';
-      if (!on) { if (this.session) this.session.classList.add('hidden'); return; }
+      if (!on) { if (this.session) this.session.classList.add('hidden'); document.body.classList.remove('pt-session-on'); return; }
       const hud = this.hud();
       if (!hud) return;
       if (!this.session || this.session.parentElement !== hud) {
         if (this.session) this.session.remove();
         const s = el('div', 'pt-session');
-        s.appendChild(el('span', 'lbl', 'SESSION'));
+        const box = el('div');
+        box.appendChild(el('span', 'lbl', 'Session'));
         this.sessionTime = el('span', 't', '0:00');
-        s.appendChild(this.sessionTime);
+        box.appendChild(this.sessionTime);
+        s.appendChild(box);
         hud.appendChild(s);
         this.session = s;
         c.shownSecond = -1;
       }
       this.session.classList.remove('hidden');
+      document.body.classList.add('pt-session-on');
       const ms = performance.now() - c.startedAt, sec = Math.floor(ms / 1000);
       if (sec !== c.shownSecond) {
         c.shownSecond = sec;
         this.sessionTime.textContent = fmtClock(ms);
         // under the speedometer when that sits in the top right corner
-        this.session.classList.toggle('low', this.setting('Speedometer', 'bottom') === 'top');
+        const sp = document.querySelector('.speedometer-ui.up');
+        this.session.style.top = sp && sp.offsetParent !== null ? sp.offsetHeight + 'px' : '0px';
       }
     },
 

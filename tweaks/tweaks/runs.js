@@ -24,6 +24,14 @@
   const fmt = Core.formatTime, dur = Core.formatDuration;
   const pct = (x) => (x * 100).toFixed(x >= 0.1 ? 0 : 1) + '%';
   const dateStr = (ts) => new Date(ts).toLocaleDateString();
+  const ago = (ts) => {
+    const s = Math.max(0, (Date.now() - ts) / 1000);
+    if (s < 60) return 'just now';
+    let unit = [60, 'minute'];
+    for (const u of [[60, 'minute'], [3600, 'hour'], [86400, 'day'], [2592000, 'month'], [31536000, 'year']]) if (s >= u[0]) unit = u;
+    const n = Math.floor(s / unit[0]);
+    return n + ' ' + unit[1] + (n === 1 ? '' : 's') + ' ago';
+  };
 
   function loadJSON(key, fallback) {
     try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
@@ -61,7 +69,8 @@
 
   // ============================================================================ charts =========
 
-  const CHART = { grid: 'rgba(255,255,255,0.12)', text: 'rgba(238,241,255,0.75)', bar: '#4fb3ff', accent: '#ffc84a', warn: '#ff6b6b' };
+  // the colours and lettering of the game's own Graphs panel (its first series is hsl(210, 100%, 65%))
+  const CHART = { grid: 'rgba(0, 0, 0, 0.4)', text: '#fff', bar: 'hsl(210, 100%, 65%)', accent: 'hsl(210, 100%, 65%)', warn: '#f55' };
 
   function prepare(canvas, height) {
     const ratio = window.devicePixelRatio || 1;
@@ -72,7 +81,7 @@
     const ctx = canvas.getContext('2d');
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.clearRect(0, 0, width, height);
-    ctx.font = '12px ForcedSquare, system-ui, sans-serif';
+    ctx.font = '12px ForcedSquare, Arial, sans-serif';
     return { ctx, width, height };
   }
 
@@ -168,44 +177,10 @@
   // ============================================================================ controller ====
 
   const CSS = `
-.pt-runs-overlay { position:absolute; left:0; top:0; width:100%; height:100%; z-index:40; display:flex; flex-direction:column;
-  background:rgb(20,20,30); color:var(--text-color); font-family:ForcedSquare, system-ui, sans-serif; pointer-events:auto; }
-.pt-runs-overlay.hidden { display:none; }
-.pt-runs-overlay.screen { background:var(--surface-secondary-color, #171b33); }
-.pt-runs-head { display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--surface-color); }
-.pt-runs-head h1 { margin:0; font-size:30px; font-weight:normal; flex:1; }
-.pt-runs-tabs { display:flex; gap:6px; }
-.pt-runs-tabs button, .pt-runs-head .button { margin:0; }
-.pt-runs-tabs button.active { background:var(--button-active-color, #3a4a9a); }
-.pt-runs-body { flex:1; overflow-y:auto; padding:16px; }
-.pt-runs-tiles { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
-.pt-runs-tile { background:var(--surface-color); padding:10px 14px; min-width:150px; flex:1 1 150px; }
-.pt-runs-tile .v { font-size:28px; }
-.pt-runs-tile .k { font-size:15px; opacity:0.75; }
-.pt-runs-card { background:var(--surface-color); padding:12px 14px; margin-bottom:14px; }
-.pt-runs-card h2 { margin:0 0 10px; font-size:22px; font-weight:normal; }
-.pt-runs-card canvas { width:100%; display:block; }
-.pt-runs-two { display:flex; gap:14px; flex-wrap:wrap; }
-.pt-runs-two > * { flex:1 1 380px; }
-table.pt-runs-table { width:100%; border-collapse:collapse; font-size:17px; }
-table.pt-runs-table th { text-align:left; opacity:0.7; font-weight:normal; padding:4px 6px; border-bottom:1px solid rgba(255,255,255,0.15); }
-table.pt-runs-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,255,0.06); }
-table.pt-runs-table tr.click { cursor:pointer; }
-table.pt-runs-sections td.pt-runs-best { color:#8ce58c; }
-table.pt-runs-sections tr.pt-runs-total td { border-top:1px solid rgba(255,255,255,0.3); font-weight:bold; }
-.pt-runs-loss { display:inline-block; vertical-align:middle; width:90px; height:7px; margin-left:8px; background:rgba(255,255,255,0.08); }
-.pt-runs-loss > i { display:block; height:100%; background:#ff8f8f; }
-.track-info-ui .pt-track-stats { display:flex; align-items:center; justify-content:center; gap:10px; margin:10px auto 2px; padding:6px 20px;
-  font-size:24px; }
-.track-info-ui .pt-track-stats small { font-size:15px; opacity:0.7; }
-table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
-.pt-runs-row { display:flex; gap:8px; align-items:center; margin:8px 0; flex-wrap:wrap; }
-.pt-runs-note { font-size:16px; opacity:0.8; margin:6px 0; white-space:pre-wrap; }
-.pt-runs-overlay input, .pt-runs-overlay textarea { font-family:inherit; font-size:17px; padding:6px 8px; background:var(--surface-secondary-color); color:var(--text-color); border:none; }
-.pt-runs-overlay textarea { width:100%; min-height:90px; resize:vertical; }
-.pt-runs-toast { position:absolute; left:50%; bottom:40px; transform:translateX(-50%); z-index:60; padding:8px 16px; font-size:19px;
-  background:var(--surface-color); color:var(--text-color); pointer-events:none; opacity:0; transition:opacity 0.2s ease-out; }
-.pt-runs-toast.show { opacity:1; }
+.pt-runs-overlay canvas { display:block; width:100%; }
+.track-info-ui .pt-track-stats { display:block; margin:-6px auto 16px; padding:6px 22px; font-size:24px; }
+.track-info-ui .pt-track-stats > img.button-icon { width:26px; height:26px; margin:-4px 2px 0 -4px; }
+.track-info-ui .pt-track-stats > small { margin-left:10px; font-size:16px; opacity:0.6; }
 `;
 
   const PTRuns = {
@@ -563,20 +538,22 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
       const K = window.PTKeys;
       if (K && K.is(e, 'TweaksSaveClip')) { e.preventDefault(); this.saveClipNow(); return; }
       if (K && K.is(e, 'TweaksStatistics')) { e.preventDefault(); this.toggle(); return; }
-      if (e.code === 'Escape' && this.overlay && !this.overlay.classList.contains('hidden')) { e.preventDefault(); e.stopPropagation(); this.close(); }
+      if (e.code === 'Escape' && this.page && this.page.open) { e.preventDefault(); e.stopPropagation(); this.back(); }
     },
 
     toast(text) {
-      let t = document.querySelector('.pt-runs-toast');
-      if (!t) { t = el('div', 'pt-runs-toast'); (document.getElementById('ui') || document.body).appendChild(t); }
-      t.textContent = text;
-      t.classList.add('show');
-      clearTimeout(this._toast);
-      this._toast = setTimeout(() => t.classList.remove('show'), 2600);
+      if (window.PTUI) window.PTUI.toast(text);
+      else log(text);
     },
 
     // ------------------------------------------------------------------ screen
-    open(tab) { this.buildOverlay(); this.tab = tab || this.tab; this.overlay.classList.remove('hidden'); this.render(); },
+    open(tab) {
+      this.buildOverlay();
+      if (tab) { this.tab = tab; this.selectedTrack = null; }
+      this.fromTrackPage = false;
+      this.page.show();
+      this.render();
+    },
 
     /**
      * Opened from the main menu: the menu hides itself and hands us the screen, which is what every
@@ -586,25 +563,31 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
       this.buildOverlay();
       this.menuHooks = hooks || null;
       try { if (hooks && hooks.hide) hooks.hide(); } catch (e) { console.error('[runs] menu hide', e); }
-      this.overlay.classList.add('screen');
       this.open();
     },
 
     close() {
-      if (this.overlay) { this.overlay.classList.add('hidden'); this.overlay.classList.remove('screen'); }
+      if (this.page) this.page.hide();
       const hooks = this.menuHooks;
       this.menuHooks = null;
       if (hooks && hooks.show) { try { hooks.show(); } catch (e) { console.error('[runs] menu show', e); } }
       this.saveNow();
     },
-    toggle() { if (!this.overlay || this.overlay.classList.contains('hidden')) this.open(); else this.close(); },
 
-    /** Straight to one track's page of the Statistics screen. */
+    /** Back (and Escape) go up one level: from a track to the list of tracks, otherwise out. */
+    back() {
+      if (this.tab === 'tracks' && this.selectedTrack && !this.fromTrackPage) { this.selectedTrack = null; this.render(); return; }
+      this.close();
+    },
+    toggle() { if (!this.page || !this.page.open) this.open(); else this.close(); },
+
+    /** Straight to one track's page of the Statistics screen; Back returns to wherever it came from. */
     openTrack(key) {
       this.buildOverlay();
       this.tab = 'tracks';
       this.selectedTrack = key;
-      this.overlay.classList.remove('hidden');
+      this.page.show();
+      this.fromTrackPage = true;
       this.render();
     },
 
@@ -616,71 +599,64 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
       try {
         const key = this.keyForTrack(id, category, name);
         const rec = this.stats && this.stats.tracks[key];
-        const b = el('button', 'button pt-track-stats', 'Statistics');
+        const b = el('button', 'button pt-track-stats');
+        const icon = el('img', 'button-icon');
+        icon.src = 'images/graph.svg';
+        b.append(icon, ' Statistics');
         b.appendChild(el('small', null, rec ? rec.attempts + (rec.attempts === 1 ? ' attempt' : ' attempts') : 'not driven yet'));
-        b.title = 'Your best times between checkpoints, and everything else recorded on this track';
-        b.addEventListener('click', () => {
-          if (!this.stats.tracks[key]) return this.toast('No statistics for this track yet — drive it once and they appear here.');
-          this.openTrack(key);
-        });
+        // like the game's Watch button: there but greyed out until there is something to show
+        b.disabled = !rec;
+        b.title = rec ? 'Your best times between checkpoints, and everything else recorded on this track' : 'Drive this track once and its statistics appear here';
+        b.addEventListener('click', () => { if (this.stats.tracks[key]) this.openTrack(key); });
         container.appendChild(b);
       } catch (e) { console.error('[runs] track page button', e); }
     },
 
     buildOverlay() {
-      if (this.overlay) return;
-      const root = document.getElementById('ui') || document.body;
-      const o = el('div', 'pt-runs-overlay hidden');
-      const head = el('div', 'pt-runs-head');
-      head.appendChild(el('h1', null, 'Statistics'));
-      const tabs = el('div', 'pt-runs-tabs');
-      for (const [id, label] of [['overview', 'Overview'], ['tracks', 'Tracks'], ['clips', 'Clips']]) {
-        const b = el('button', 'button', label);
-        b.dataset.tab = id;
-        b.addEventListener('click', () => { this.tab = id; this.selectedTrack = null; this.render(); });
-        tabs.appendChild(b);
-      }
-      head.appendChild(tabs);
-      const close = el('button', 'button', 'Close');
-      close.addEventListener('click', () => this.close());
-      head.appendChild(close);
-      o.appendChild(head);
-      o.appendChild(el('div', 'pt-runs-body'));
-      root.appendChild(o);
-      this.overlay = o;
+      if (this.page) return;
+      const shown = (sel) => { const e = document.querySelector(sel); return e && e.offsetParent !== null ? e : null; };
+      this.page = window.PTUI.page({
+        cls: 'pt-runs-overlay',
+        title: 'Statistics',
+        tabs: [['overview', 'Overview'], ['tracks', 'Tracks'], ['clips', 'Clips']],
+        onTab: (id) => { this.tab = id; this.selectedTrack = null; this.fromTrackPage = false; this.render(); },
+        onBack: () => this.back(),
+        // it takes the place of the screen it was opened from, as the game's own screens do
+        behind: () => [shown('.track-selection-ui'), shown('.track-info-ui')],
+      });
+      this.overlay = this.page.root;
     },
 
     render() {
-      if (!this.overlay) return;
-      for (const b of this.overlay.querySelectorAll('.pt-runs-tabs button')) b.classList.toggle('active', b.dataset.tab === this.tab);
-      const body = this.overlay.querySelector('.pt-runs-body');
+      if (!this.page) return;
+      const P = this.page;
+      const view = this.tab + '|' + (this.tab === 'tracks' ? this.selectedTrack || '' : '');
+      const fresh = view !== this.view;
+      this.view = view;
+      const scroll = P.content.scrollTop;
+      P.setTab(this.tab);
+      P.title.textContent = 'Statistics';
+      P.sub.textContent = '';
+      const body = P.content;
       body.textContent = '';
       if (this.tab === 'overview') this.renderOverview(body);
       else if (this.tab === 'tracks') this.selectedTrack ? this.renderTrack(body, this.selectedTrack) : this.renderTracks(body);
       else this.renderClips(body);
+      // a new view starts at the top and fades in; the same view redrawn keeps its place
+      if (fresh) { body.scrollTop = 0; P.swap(); } else body.scrollTop = scroll;
     },
 
-    tiles(parent, items) {
-      const wrap = el('div', 'pt-runs-tiles');
-      for (const [k, v] of items) {
-        const t = el('div', 'pt-runs-tile');
-        t.appendChild(el('div', 'v', v));
-        t.appendChild(el('div', 'k', k));
-        wrap.appendChild(t);
-      }
-      parent.appendChild(wrap);
-    },
-
-    card(parent, title) {
-      const c = el('div', 'pt-runs-card');
-      if (title) c.appendChild(el('h2', null, title));
-      parent.appendChild(c);
-      return c;
+    chart(card, height) {
+      const canvas = el('canvas');
+      canvas.style.height = height + 'px';
+      card.appendChild(canvas);
+      return canvas;
     },
 
     renderOverview(body) {
+      const U = window.PTUI;
       const s = Core.overallSummary(this.stats);
-      this.tiles(body, [
+      U.tiles(body, [
         ['Driving time', dur(s.drivingMs)],
         ['Time in game', dur(s.appMs)],
         ['Attempts', s.attempts.toLocaleString()],
@@ -691,76 +667,76 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
         ['Distance', (s.distance / 1000).toFixed(1) + ' km'],
       ]);
 
-      const activity = this.card(body, 'Activity (last 30 days)');
-      const canvas = el('canvas');
-      activity.appendChild(canvas);
+      const activity = U.card(body, 'Activity', 'attempts a day, the last 30 days');
+      const canvas = this.chart(activity, 150);
       const series = Core.activitySeries(this.stats, 30);
       requestAnimationFrame(() => barChart(canvas, series.map((d) => ({ value: d.attempts, label: d.day.slice(5) })), { height: 150 }));
 
-      const two = el('div', 'pt-runs-two');
+      const two = el('div', 'pt-cols');
       body.appendChild(two);
-      const most = this.card(two, 'Most played');
-      most.appendChild(this.trackTable(s.mostPlayed));
-      const recent = this.card(two, 'Recent runs');
-      const table = el('table', 'pt-runs-table');
-      table.innerHTML = '<tr><th>Track</th><th>Result</th><th>When</th></tr>';
-      for (const r of this.stats.recent.slice(0, 12)) {
-        const tr = el('tr');
-        tr.appendChild(el('td', null, r.n));
-        tr.appendChild(el('td', null, r.f != null ? fmt(r.f) : 'reset at checkpoint ' + r.cp));
-        tr.appendChild(el('td', null, new Date(r.t).toLocaleString()));
-        table.appendChild(tr);
-      }
-      recent.appendChild(table);
-      if (!this.stats.recent.length) recent.appendChild(el('p', 'pt-runs-note', 'Drive a track and it will show up here.'));
+      const most = U.card(two, 'Most played');
+      if (s.mostPlayed.length) most.appendChild(this.trackTable(s.mostPlayed, true));
+      else most.appendChild(el('p', 'pt-note', 'Nothing driven yet.'));
+      const recent = U.card(two, 'Recent runs');
+      if (this.stats.recent.length) {
+        const table = U.list(['Track', ['Result', 'r'], ['When', 'r']], 'pt-runs-table');
+        for (const r of this.stats.recent.slice(0, 12)) {
+          const tr = el('tr', r.f != null ? null : 'faded');
+          tr.appendChild(el('td', null, r.n));
+          tr.appendChild(el('td', 'r', r.f != null ? fmt(r.f) : 'reset at CP ' + r.cp));
+          tr.appendChild(el('td', 'r', ago(r.t)));
+          table.appendChild(tr);
+        }
+        recent.appendChild(table);
+      } else recent.appendChild(el('p', 'pt-note', 'Drive a track and it will show up here.'));
     },
 
-    trackTable(tracks) {
-      const table = el('table', 'pt-runs-table');
-      table.innerHTML = '<tr><th>Track</th><th>Attempts</th><th>Best</th><th>Finish rate</th><th>Time</th></tr>';
+    trackTable(tracks, compact) {
+      const U = window.PTUI;
+      const table = U.list(compact ? ['Track', ['Attempts', 'r'], ['Best', 'r']]
+        : ['Track', ['Attempts', 'r'], ['Best', 'r'], ['Finish rate', 'r'], ['Driving', 'r']], 'pt-runs-table');
       for (const t of tracks) {
         const tr = el('tr', 'click');
         tr.appendChild(el('td', null, t.name));
-        tr.appendChild(el('td', null, String(t.attempts)));
-        tr.appendChild(el('td', null, t.bestFrames != null ? fmt(t.bestFrames) : '—'));
-        tr.appendChild(el('td', null, pct(t.attempts ? t.finishes / t.attempts : 0)));
-        tr.appendChild(el('td', null, dur(t.drivingMs)));
-        tr.addEventListener('click', () => { this.tab = 'tracks'; this.selectedTrack = t.id; this.render(); });
+        tr.appendChild(el('td', 'r', String(t.attempts)));
+        tr.appendChild(el('td', 'r', t.bestFrames != null ? fmt(t.bestFrames) : '—'));
+        if (!compact) {
+          tr.appendChild(el('td', 'r', pct(t.attempts ? t.finishes / t.attempts : 0)));
+          tr.appendChild(el('td', 'r', dur(t.drivingMs)));
+        }
+        tr.addEventListener('click', () => { this.tab = 'tracks'; this.selectedTrack = t.id; this.fromTrackPage = false; this.render(); });
         table.appendChild(tr);
       }
       return table;
     },
 
     renderTracks(body) {
+      const U = window.PTUI;
       const all = Object.values(this.stats.tracks).filter((t) => t.attempts > 0);
-      const row = el('div', 'pt-runs-row');
-      const search = el('input');
-      search.placeholder = 'Search tracks';
-      row.appendChild(search);
-      body.appendChild(row);
-      const holder = this.card(body, all.length + ' track' + (all.length === 1 ? '' : 's'));
-      const draw = () => {
+      const holder = el('div', 'pt-list-wrap');
+      const draw = (q) => {
         holder.textContent = '';
-        const q = search.value.trim().toLowerCase();
+        q = (q || '').trim().toLowerCase();
         const list = all.filter((t) => !q || t.name.toLowerCase().includes(q)).sort((a, b) => b.drivingMs - a.drivingMs);
-        holder.appendChild(this.trackTable(list));
-        if (!list.length) holder.appendChild(el('p', 'pt-runs-note', 'No tracks match.'));
+        if (list.length) holder.appendChild(this.trackTable(list));
+        else holder.appendChild(el('p', 'pt-note', all.length ? 'No track matches.' : 'Drive a track and it will show up here.'));
       };
-      search.addEventListener('input', draw);
-      draw();
+      const row = el('div', 'pt-row');
+      row.appendChild(U.search('Search your tracks…', draw));
+      row.appendChild(el('span', 'pt-note', all.length + (all.length === 1 ? ' track driven' : ' tracks driven')));
+      body.append(row, holder);
+      draw('');
     },
 
     renderTrack(body, key) {
+      const U = window.PTUI;
       const t = Core.trackSummary(this.stats, key);
       if (!t) { this.selectedTrack = null; return this.renderTracks(body); }
-      const back = el('button', 'button', '← All tracks');
-      back.addEventListener('click', () => { this.selectedTrack = null; this.render(); });
-      const row = el('div', 'pt-runs-row');
-      row.appendChild(back);
-      row.appendChild(el('span', 'pt-runs-note', t.name + '  ·  ' + t.type));
-      body.appendChild(row);
+      const kinds = { official: 'Official track', community: 'Community track', custom: 'Custom track' };
+      this.page.title.textContent = t.name;
+      this.page.sub.textContent = (kinds[t.type] || 'Track') + ' · your statistics';
 
-      this.tiles(body, [
+      U.tiles(body, [
         ['Best', t.bestFrames != null ? fmt(t.bestFrames) : '—'],
         ['Average finish', t.averageFinish != null ? fmt(t.averageFinish) : '—'],
         ['Last 10 average', t.recentAverage != null ? fmt(t.recentAverage) : '—'],
@@ -770,184 +746,164 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
         ['Finish rate', pct(t.finishRate)],
         ['Driving time', dur(t.drivingMs)],
         ['Top speed', t.maxSpeedKmh ? Math.round(t.maxSpeedKmh) + ' km/h' : '—'],
-        ['Last played', t.lastPlayed ? dateStr(t.lastPlayed) : '—'],
+        ['Last played', t.lastPlayed ? ago(t.lastPlayed) : '—'],
       ]);
 
-      const two = el('div', 'pt-runs-two');
+      const two = el('div', 'pt-cols');
       body.appendChild(two);
-
-      const prog = this.card(two, 'Personal best over time');
+      const prog = U.card(two, 'Personal best over time');
       const points = t.progression.map((p, i) => ({ x: i, y: p.f, t: p.t }));
       if (points.length > 1) {
-        const pc = el('canvas');
-        prog.appendChild(pc);
+        const pc = this.chart(prog, 180);
         requestAnimationFrame(() => lineChart(pc, points, { formatY: fmt, formatX: (i) => dateStr(t.progression[Math.round(i)] ? t.progression[Math.round(i)].t : Date.now()) }));
-      } else prog.appendChild(el('p', 'pt-runs-note', 'Finish this track a few times to see your improvement.'));
+      } else prog.appendChild(el('p', 'pt-note', 'Finish this track a few times to see your improvement.'));
 
-      const dist = this.card(two, 'Finish times');
+      const dist = U.card(two, 'Finish times');
       if (t.finishTimes.length > 1) {
-        const dc = el('canvas');
-        dist.appendChild(dc);
+        const dc = this.chart(dist, 150);
         const min = Math.min(...t.finishTimes), max = Math.max(...t.finishTimes);
         const buckets = 12, span = (max - min) || 1;
         const counts = new Array(buckets).fill(0);
         for (const f of t.finishTimes) counts[Math.min(buckets - 1, Math.floor(((f - min) / span) * buckets))]++;
         requestAnimationFrame(() => barChart(dc, counts.map((c, i) => ({ value: c, label: i === 0 ? fmt(min) : i === buckets - 1 ? fmt(max) : '' })), { height: 150 }));
-      } else dist.appendChild(el('p', 'pt-runs-note', 'Not enough finishes yet.'));
+      } else dist.appendChild(el('p', 'pt-note', 'Not enough finishes yet.'));
 
       // best times between checkpoints: each section on its own, and where your best run loses time
-      const secs = this.card(body, 'Best times between checkpoints');
+      const secs = U.card(body, 'Best times between checkpoints');
       const sections = t.bestSections || [];
       if (sections.length) {
         const n = sections.length, finishLast = t.finishes > 0 && n === t.splits.best.length;
         const point = (i) => (i === 0 ? 'Start' : i === n && finishLast ? 'Finish' : 'CP ' + i);
         const losses = sections.map((best, i) => (t.pbSections && t.pbSections[i] != null && best != null ? t.pbSections[i] - best : null));
         const worst = Math.max(1, ...losses.filter((x) => x != null));
-        const table = el('table', 'pt-runs-table pt-runs-sections');
-        table.innerHTML = '<tr><th>Section</th><th>Best</th><th>Average</th><th>In your best run</th><th>Your best run loses</th></tr>';
+        const table = U.list(['Section', ['Best', 'r'], ['Average', 'r'], ['In your best run', 'r'], ['Your best run loses', 'r']], 'pt-runs-table pt-runs-sections');
         sections.forEach((best, i) => {
           const tr = el('tr');
           tr.appendChild(el('td', null, point(i) + ' → ' + point(i + 1)));
-          tr.appendChild(el('td', 'pt-runs-best', best != null ? fmt(best) : '—'));
+          tr.appendChild(el('td', 'r pt-good', best != null ? fmt(best) : '—'));
           const avg = t.averageSections ? t.averageSections[i] : null;
-          tr.appendChild(el('td', null, avg != null ? fmt(avg) : '—'));
+          tr.appendChild(el('td', 'r', avg != null ? fmt(avg) : '—'));
           const pb = t.pbSections ? t.pbSections[i] : null;
-          tr.appendChild(el('td', null, pb != null ? fmt(pb) : '—'));
-          const lossCell = el('td');
+          tr.appendChild(el('td', 'r', pb != null ? fmt(pb) : '—'));
+          const lossCell = el('td', 'r');
           const loss = losses[i];
           if (loss != null) {
-            const bar = el('span', 'pt-runs-loss');
-            const fill = el('i'); fill.style.width = (100 * loss / worst).toFixed(1) + '%';
-            bar.appendChild(fill);
             lossCell.append(loss > 0 ? '+' + fmt(loss) : '±0.000');
-            lossCell.appendChild(bar);
+            lossCell.appendChild(U.meter(loss / worst, true));
           } else lossCell.textContent = '—';
           tr.appendChild(lossCell);
           table.appendChild(tr);
         });
-        const total = el('tr', 'pt-runs-total');
+        const total = el('tr', 'total');
         total.appendChild(el('td', null, 'Whole run'));
-        total.appendChild(el('td', 'pt-runs-best', t.theoreticalBest != null ? fmt(t.theoreticalBest) : '—'));
-        total.appendChild(el('td', null, t.averageFinish != null ? fmt(t.averageFinish) : '—'));
-        total.appendChild(el('td', null, t.bestFrames != null ? fmt(t.bestFrames) : '—'));
+        total.appendChild(el('td', 'r pt-good', t.theoreticalBest != null ? fmt(t.theoreticalBest) : '—'));
+        total.appendChild(el('td', 'r', t.averageFinish != null ? fmt(t.averageFinish) : '—'));
+        total.appendChild(el('td', 'r', t.bestFrames != null ? fmt(t.bestFrames) : '—'));
         const gave = t.bestFrames != null && t.theoreticalBest != null ? t.bestFrames - t.theoreticalBest : null;
-        total.appendChild(el('td', null, gave == null ? '—' : gave > 0 ? '+' + fmt(gave) : '±0.000'));
+        total.appendChild(el('td', 'r', gave == null ? '—' : gave > 0 ? '+' + fmt(gave) : '±0.000'));
         table.appendChild(total);
         secs.appendChild(table);
-        secs.appendChild(el('p', 'pt-runs-note', 'Best: your quickest time on that section in any run, finished or not. Added up, they make the whole-run best'
+        secs.appendChild(el('p', 'pt-note', 'Best: your quickest time on that section in any run, finished or not. Added up, they make the whole-run best'
           + ' (the theoretical best). The last column is how much your personal best gave away on each section against your own best there.'
           + (t.pbSections ? '' : ' Your personal best predates this table: set a new one to fill that column.')));
-      } else secs.appendChild(el('p', 'pt-runs-note', 'No sections recorded yet — pass a checkpoint and they appear here.'));
+      } else secs.appendChild(el('p', 'pt-note', 'No sections recorded yet — pass a checkpoint and they appear here.'));
 
-      const splits = this.card(body, 'Checkpoint splits');
+      const splits = U.card(body, 'Checkpoint splits');
       if (t.splits.best.length) {
-        const table = el('table', 'pt-runs-table');
-        table.innerHTML = '<tr><th>Checkpoint</th><th>Best</th><th>Average</th><th>Difference</th></tr>';
+        const table = U.list(['Checkpoint', ['Best', 'r'], ['Average', 'r'], ['Average behind best', 'r']], 'pt-runs-table');
         t.splits.best.forEach((best, i) => {
           if (best == null) return;
           const avg = t.averageSplits[i];
           const tr = el('tr');
-          tr.appendChild(el('td', null, i === t.splits.best.length - 1 ? 'Finish' : 'Checkpoint ' + (i + 1)));
-          tr.appendChild(el('td', null, fmt(best)));
-          tr.appendChild(el('td', null, avg != null ? fmt(avg) : '—'));
-          tr.appendChild(el('td', null, avg != null ? '+' + fmt(avg - best) : '—'));
+          tr.appendChild(el('td', null, i === t.splits.best.length - 1 && t.finishes > 0 ? 'Finish' : 'Checkpoint ' + (i + 1)));
+          tr.appendChild(el('td', 'r', fmt(best)));
+          tr.appendChild(el('td', 'r', avg != null ? fmt(avg) : '—'));
+          tr.appendChild(el('td', 'r', avg == null ? '—' : avg > best ? '+' + fmt(avg - best) : '±0.000'));
           table.appendChild(tr);
         });
         splits.appendChild(table);
-      } else splits.appendChild(el('p', 'pt-runs-note', 'No checkpoint times recorded yet.'));
+      } else splits.appendChild(el('p', 'pt-note', 'No checkpoint times recorded yet.'));
 
-      const resets = this.card(body, 'Where you reset');
-      const hc = el('canvas');
-      resets.appendChild(hc);
+      const resets = U.card(body, 'Where you reset', 'brighter means more resets');
+      const hc = this.chart(resets, 320);
       requestAnimationFrame(() => heatmap(hc, t.resetCells || {}, t.footprint || [], { height: 320 }));
       const byCp = (t.resetByCheckpoint || []).map((v, i) => ({ value: v || 0, label: i === 0 ? 'start' : 'cp ' + i }));
       if (byCp.length) {
-        const seg = el('canvas');
-        resets.appendChild(el('p', 'pt-runs-note', 'Resets by section of the track:'));
-        resets.appendChild(seg);
+        resets.appendChild(el('p', 'pt-note', 'Resets in each section of the track:'));
+        const seg = this.chart(resets, 140);
         requestAnimationFrame(() => barChart(seg, byCp, { height: 140, color: CHART.warn }));
       }
     },
 
     renderClips(body) {
-      const row = el('div', 'pt-runs-row');
-      const every = el('button', 'button', (this.prefs.recordEvery ? '☑' : '☐') + ' Record every run');
-      every.addEventListener('click', () => { this.prefs.recordEvery = !this.prefs.recordEvery; this.savePrefs(); this.render(); });
-      row.appendChild(every);
-      const records = el('button', 'button', (this.prefs.clipRecords ? '☑' : '☐') + ' Clip new records');
-      records.addEventListener('click', () => { this.prefs.clipRecords = !this.prefs.clipRecords; this.savePrefs(); this.render(); });
-      row.appendChild(records);
-      const clipNow = el('button', 'button', 'Clip last run');
+      const U = window.PTUI;
+      const row = el('div', 'pt-row');
+      row.appendChild(U.toggle('Record every run', this.prefs.recordEvery, (on) => { this.prefs.recordEvery = on; this.savePrefs(); }));
+      row.appendChild(U.toggle('Clip new records', this.prefs.clipRecords, (on) => { this.prefs.clipRecords = on; this.savePrefs(); }));
+      row.appendChild(el('div', 'pt-grow'));
+      const clipNow = U.button('Clip last run', 'video.svg');
       clipNow.addEventListener('click', () => this.saveClipNow());
       row.appendChild(clipNow);
       body.appendChild(row);
-      const clipNote = el('p', 'pt-runs-note', 'Press ');
-      this.appendCaps(clipNote, 'TweaksSaveClip');
-      clipNote.appendChild(document.createTextNode(' while driving to save the run so far, or after a run to save the one you just did. '
-        + 'New records are clipped automatically, one per track.'));
+      const clipNote = el('p', 'pt-note');
+      clipNote.append('Press ', U.keys('TweaksSaveClip'), ' while driving to save the run so far, or after a run to save the one you just did. '
+        + 'New records are clipped automatically, one per track. Keys are set in Settings → Controls → Tweaks: other keys.');
       body.appendChild(clipNote);
-      body.appendChild(this.keysNote());
 
       const P = window.PTPractice;
       if (P && P.prefs) {
-        body.appendChild(el('h2', null, 'Practice tools (editor test drive)'));
-        body.appendChild(el('p', 'pt-runs-note',
+        body.appendChild(el('h3', 'pt-heading', 'Practice tools (editor test drive)'));
+        body.appendChild(el('p', 'pt-note',
           'While you are testing a track in the editor you can slow time down or speed it up, and keep savestates. '
           + 'They are deliberately unavailable in a real race: a run driven in slow motion would still produce a valid '
           + 'recording, so a run with the tools used is never saved to your statistics.'));
-        const prow = el('div', 'pt-runs-row');
-        const panel = el('button', 'button', (P.prefs.panel ? '☑' : '☐') + ' Show the practice readout');
-        panel.addEventListener('click', () => { P.prefs.panel = !P.prefs.panel; P.savePrefs(); if (P.show) P.show(); if (P.draw) P.draw(); this.render(); });
-        prow.appendChild(panel);
+        const prow = el('div', 'pt-row');
+        prow.appendChild(U.toggle('Show the practice readout', !!P.prefs.panel, (on) => {
+          P.prefs.panel = on; P.savePrefs(); if (P.show) P.show(); if (P.draw) P.draw();
+        }));
         body.appendChild(prow);
-        const pkeys = el('p', 'pt-runs-note', 'The speed is set in the editor, next to Test. While test driving: ');
+        const pkeys = el('p', 'pt-note', 'The speed is set in the editor, next to Test. While test driving: ');
         [['TweaksPracticeSlower', 'slower'], ['TweaksPracticeFaster', 'faster'], ['TweaksPracticeNormal', 'normal speed'],
           ['TweaksPracticeSave', 'save state'], ['TweaksPracticeLoad', 'load state'], ['TweaksPracticeForget', 'clear state'],
           ['TweaksPracticeSlot', 'next slot']].forEach(([name, what], i) => {
           if (i) pkeys.appendChild(document.createTextNode(',  '));
-          this.appendCaps(pkeys, name);
-          pkeys.appendChild(document.createTextNode(' ' + what));
+          pkeys.append(U.keys(name), ' ' + what);
         });
         pkeys.appendChild(document.createTextNode('.'));
         body.appendChild(pkeys);
       }
 
-      const imp = this.card(body, 'Import a clip');
+      const imp = U.card(body, 'Import a clip');
       const area = el('textarea');
-      area.placeholder = 'Paste a clip code here (starts with ' + Core.CLIP_PREFIX + ')';
+      area.placeholder = 'Paste a clip code here (it starts with ' + Core.CLIP_PREFIX + ')';
+      area.spellcheck = false;
+      for (const t of ['keydown', 'keyup', 'keypress']) area.addEventListener(t, (e) => { if (e.key !== 'Escape') e.stopPropagation(); });
       imp.appendChild(area);
-      const irow = el('div', 'pt-runs-row');
-      const importBtn = el('button', 'button', 'Import code');
+      const irow = el('div', 'pt-row');
+      irow.style.margin = '10px 0 0';
+      const importBtn = U.button('Import code', 'import.svg');
       importBtn.addEventListener('click', () => { if (this.importClip(area.value)) area.value = ''; });
-      irow.appendChild(importBtn);
-      const file = el('input');
-      file.type = 'file'; file.accept = '.ptclip,.txt';
-      file.addEventListener('change', () => {
-        const f = file.files && file.files[0];
-        if (!f) return;
-        f.text().then((text) => this.importClip(text)).catch(() => this.toast('Could not read that file.'));
-        file.value = '';
-      });
-      irow.appendChild(file);
+      irow.append(importBtn, U.fileButton('Open a .ptclip file', '.ptclip,.txt', (text) => this.importClip(text)));
       imp.appendChild(irow);
 
-      const list = this.card(body, this.clips.length + ' clip' + (this.clips.length === 1 ? '' : 's'));
-      if (!this.clips.length) { list.appendChild(el('p', 'pt-runs-note', 'No clips yet.')); return; }
-      const table = el('table', 'pt-runs-table');
-      table.innerHTML = '<tr><th>Track</th><th>Time</th><th>Saved</th><th>Size</th><th></th></tr>';
+      const list = U.card(body, 'Your clips', this.clips.length ? this.clips.length + ' saved' : null);
+      if (!this.clips.length) { list.appendChild(el('p', 'pt-note', 'No clips yet.')); return; }
+      const table = U.list(['Track', ['Time', 'r'], ['Saved', 'r'], ['Size', 'r'], ''], 'pt-runs-table');
       for (const c of this.clips) {
         const tr = el('tr');
-        tr.appendChild(el('td', null, c.track + (c.kind === 'record' ? ' (record)' : c.auto ? ' (auto)' : '')));
-        tr.appendChild(el('td', null, c.finished ? fmt(c.frames) : 'unfinished ' + fmt(c.frames)));
-        tr.appendChild(el('td', null, new Date(c.savedAt).toLocaleString()));
-        tr.appendChild(el('td', null, (c.code.length / 1024).toFixed(1) + ' KB'));
-        const actions = el('td');
-        const add = (label, fn) => { const b = el('button', 'button', label); b.style.cssText = 'margin:0 4px 0 0;padding:2px 8px;font-size:15px'; b.addEventListener('click', fn); actions.appendChild(b); };
+        const name = el('td', null, c.track);
+        if (c.kind === 'record' || c.auto) name.appendChild(el('span', 'pt-dim', c.kind === 'record' ? '  record' : '  auto'));
+        tr.appendChild(name);
+        tr.appendChild(el('td', 'r', c.finished ? fmt(c.frames) : 'unfinished ' + fmt(c.frames)));
+        tr.appendChild(el('td', 'r', ago(c.savedAt)));
+        tr.appendChild(el('td', 'r', (c.code.length / 1024).toFixed(1) + ' KB'));
+        const actions = el('td', 'r');
+        const add = (label, fn, on) => { const b = el('button', 'button' + (on ? ' selected' : ''), label); b.addEventListener('click', fn); actions.appendChild(b); };
         add('Watch', () => this.watchClip(c));
         add('Copy', () => { navigator.clipboard.writeText(c.code).then(() => this.toast('Clip code copied — paste it to share.'), () => this.toast('Could not copy.')); });
-        add('Save file', () => this.download(c));
+        add('Save', () => this.download(c));
         const armed = this.pendingGhosts.some((g) => g.clipId === c.id);
-        add(armed ? 'Ghost ✓' : 'Ghost', () => (armed ? this.disarmGhost(c) : this.armGhost(c)));
+        add(armed ? 'Ghost ✓' : 'Ghost', () => (armed ? this.disarmGhost(c) : this.armGhost(c)), armed);
         add('Delete', () => { this.clips = this.clips.filter((x) => x.id !== c.id); this.saveClips(); this.render(); });
         tr.appendChild(actions);
         table.appendChild(tr);
@@ -965,14 +921,6 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
         a.click();
         setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
       } catch (e) { this.toast('Could not save that file.'); }
-    },
-
-    appendCaps(parent, name) {
-      if (window.PTKeys) parent.appendChild(window.PTKeys.caps(name));
-      else parent.appendChild(document.createTextNode('?'));
-    },
-    keysNote() {
-      return el('p', 'pt-runs-note', 'Keys are set with the game’s own, in Settings → Controls → Tweaks: other keys.');
     },
   };
 

@@ -25,14 +25,15 @@
   };
 
   const CSS = `
+/* a readout for finding problems: the game's surface, but fixed-width figures so the columns line up */
 .pt-diag { position:absolute; left:8px; top:8px; z-index:70; padding:8px 10px; min-width:300px;
-  background:rgba(12,14,28,0.82); color:#e8ecff; font:13px/1.45 Consolas, "Courier New", monospace;
+  background:rgba(25, 32, 66, 0.92); color:#fff; font:13px/1.45 Consolas, "Courier New", monospace; font-style:normal;
   pointer-events:auto; white-space:pre; }
 .pt-diag.hidden { display:none; }
-.pt-diag b { color:#ffc84a; font-weight:normal; }
+.pt-diag b { color:#ff5; font-weight:normal; }
 .pt-diag .row { display:flex; gap:6px; margin-top:6px; }
-.pt-diag button { font:12px Consolas, monospace; padding:2px 8px; background:#2b3570; color:#eef1ff; border:none; cursor:pointer; }
-.pt-diag button:hover { background:#3a4a9a; }
+.pt-diag button { font:12px Consolas, monospace; padding:2px 8px; background:var(--button-color); color:#fff; border:none; cursor:pointer; }
+.pt-diag button:hover { background:var(--button-hover-color); }
 `;
 
   const PTDiag = {

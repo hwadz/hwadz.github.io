@@ -321,54 +321,56 @@
 
   // ---------------------------------------------------------------- the panel
   const CSS = `
-.pt-tm { position:absolute; right:10px; top:50%; transform:translateY(-50%); z-index:30; width:286px; box-sizing:border-box;
-  padding:6px 9px 8px; background:rgba(14,18,42,0.68); color:#eef1ff; font-family:ForcedSquare, system-ui, sans-serif;
-  font-size:13px; line-height:1.3; pointer-events:none; border-left:3px solid rgba(255,200,74,0.85); contain:layout paint; }
+/* a HUD box like the speedometer's: the game's surface, a slanted edge, the screen edge behind it. It sits
+   under the game's own windows (the replay's Graphs) rather than over them, and a little below the middle,
+   clear of the hint the game shows at the top ("Press T to try again"). */
+.pt-tm { position:absolute; right:var(--safe-area-horizontal); top:50%; transform:translateY(calc(-50% + 76px)); z-index:1; width:300px;
+  box-sizing:border-box; padding:8px 10px 10px 18px; background-color:var(--surface-color); opacity:0.9; color:var(--text-color);
+  font-size:13px; line-height:1.3; pointer-events:none; clip-path:polygon(8px 0, 100% 0, 100% 100%, 0 100%); contain:layout paint; }
 .pt-tm.hidden { display:none; }
-.pt-tm .hd { display:flex; align-items:baseline; gap:6px; font-size:11px; letter-spacing:1px; }
-.pt-tm .hd .ttl { color:#ffc84a; }
-.pt-tm .hd .who { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; opacity:0.85; letter-spacing:0; font-size:12px; }
-.pt-tm .hd .clock { font-size:12px; letter-spacing:0; }
-.pt-tm .sec { margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.13); }
+.pt-tm .hd { display:flex; align-items:baseline; gap:8px; font-size:14px; }
+.pt-tm .hd .ttl { opacity:0.5; }
+.pt-tm .hd .who { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pt-tm .hd .clock { font-size:14px; }
+.pt-tm .sec { margin-top:6px; padding:5px 8px; background-color:var(--surface-tertiary-color); }
 .pt-tm .row { display:flex; align-items:center; gap:7px; }
-.pt-tm .lbl { font-size:10px; opacity:0.6; letter-spacing:0.5px; }
-.pt-tm .dim { opacity:0.6; }
+.pt-tm .lbl { font-size:11px; opacity:0.5; }
+.pt-tm .dim { opacity:0.5; }
 .pt-tm canvas { display:block; flex:none; }
-.pt-tm .speed { font-size:22px; line-height:1.05; }
-.pt-tm .speed small { font-size:11px; opacity:0.7; margin-left:3px; }
+.pt-tm .speed { font-size:24px; line-height:1.05; }
+.pt-tm .speed small { font-size:0.5em; opacity:0.5; margin-left:0.25em; }
 .pt-tm .kv { display:grid; grid-template-columns:auto 1fr auto 1fr; column-gap:6px; row-gap:1px; font-size:12px; align-items:baseline; }
 .pt-tm .kv > .v { text-align:right; white-space:nowrap; }
 .pt-tm .keys { display:grid; grid-template-columns:repeat(3,15px); grid-template-rows:repeat(2,15px); gap:2px; flex:none; }
-.pt-tm .key { display:flex; align-items:center; justify-content:center; font-size:9px; background:rgba(255,255,255,0.09); color:#cfd6ff; }
-.pt-tm .key.on { background:#ffc84a; color:#14182c; }
+.pt-tm .key { display:flex; align-items:center; justify-content:center; font-size:9px; background-color:var(--surface-color); color:var(--text-color); }
+.pt-tm .key.on { background-color:#fff; color:var(--surface-tertiary-color); }
 .pt-tm .key.up { grid-column:2; grid-row:1; } .pt-tm .key.left { grid-column:1; grid-row:2; }
 .pt-tm .key.down { grid-column:2; grid-row:2; } .pt-tm .key.right { grid-column:3; grid-row:2; }
 .pt-tm .key.reset { grid-column:3; grid-row:1; font-size:8px; }
 .pt-tm .steer { flex:1; }
-.pt-tm .bar { position:relative; height:6px; margin-top:3px; background:rgba(255,255,255,0.1); }
-.pt-tm .bar > i { position:absolute; top:0; bottom:0; background:#8cd3ff; }
-.pt-tm .bar > b { position:absolute; left:50%; top:-2px; bottom:-2px; width:1px; background:rgba(255,255,255,0.45); }
+.pt-tm .bar { position:relative; height:6px; margin-top:3px; background-color:var(--surface-color); }
+.pt-tm .bar > i { position:absolute; top:0; bottom:0; background-color:hsl(210, 100%, 65%); }
+.pt-tm .bar > b { position:absolute; left:50%; top:-2px; bottom:-2px; width:1px; background-color:rgba(255,255,255,0.5); }
 .pt-tm table { border-collapse:collapse; font-size:12px; flex:1; }
 .pt-tm td { padding:0 0 0 6px; white-space:nowrap; text-align:right; }
-.pt-tm td:first-child { text-align:left; padding-left:0; opacity:0.7; }
-.pt-tm th { font-weight:normal; font-size:10px; opacity:0.6; text-align:right; padding:0 0 1px 6px; }
+.pt-tm td:first-child { text-align:left; padding-left:0; opacity:0.75; }
+.pt-tm th { font-weight:normal; font-size:10px; opacity:0.5; text-align:right; padding:0 0 1px 6px; }
 .pt-tm th:first-child { text-align:left; padding-left:0; }
-.pt-tm .slide { color:#ff8a76; }
+.pt-tm .slide { color:#f55; }
 .pt-tm .air { opacity:0.45; }
 .pt-tm .angles { display:grid; grid-template-columns:repeat(4,1fr); gap:3px; text-align:center; }
 .pt-tm .angles canvas { margin:0 auto; }
 .pt-tm .angles .v { font-size:12px; }
 .pt-tm .cphd { display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px; }
-.pt-tm .cphd .t { color:#ffc84a; }
-.pt-tm .cp { display:grid; grid-template-columns:12px 1fr 58px 50px 30px; column-gap:4px; font-size:12px; line-height:16px; align-items:center; }
+.pt-tm .cp { display:grid; grid-template-columns:12px 1fr 58px 50px 30px; column-gap:4px; padding:0 2px; font-size:12px; line-height:16px; align-items:center; }
 .pt-tm .cp > span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .pt-tm .cp > .t, .pt-tm .cp > .d { text-align:right; }
-.pt-tm .cp.you { color:#ffc84a; }
-.pt-tm .cp .d.slower { color:#ff8a76; } .pt-tm .cp .d.faster { color:#7be08a; }
-.pt-tm .cp .g { position:relative; height:6px; background:rgba(255,255,255,0.06); }
+.pt-tm .cp.you { background-color:#2e4182; }
+.pt-tm .cp .d.slower { color:#f55; } .pt-tm .cp .d.faster { color:#5f5; }
+.pt-tm .cp .g { position:relative; height:6px; background-color:var(--surface-color); }
 .pt-tm .cp .g > i { position:absolute; top:0; bottom:0; }
-.pt-tm .cp .g > i.slower { right:50%; background:#ff8a76; } .pt-tm .cp .g > i.faster { left:50%; background:#7be08a; }
-.pt-tm .cp .g > b { position:absolute; left:50%; top:-1px; bottom:-1px; width:1px; background:rgba(255,255,255,0.4); }
+.pt-tm .cp .g > i.slower { right:50%; background-color:#f55; } .pt-tm .cp .g > i.faster { left:50%; background-color:#5f5; }
+.pt-tm .cp .g > b { position:absolute; left:50%; top:-1px; bottom:-1px; width:1px; background-color:rgba(255,255,255,0.4); }
 `;
 
   /** A text node that is only rewritten when its value changes. */
@@ -399,7 +401,7 @@
       if (!document.getElementById('pt-tm-css')) { const st = el('style'); st.id = 'pt-tm-css'; st.textContent = CSS; document.head.appendChild(st); }
       const root = this.root = el('div', 'pt-tm');
       const hd = el('div', 'hd');
-      hd.appendChild(el('span', 'ttl', 'TELEMETRY'));
+      hd.appendChild(el('span', 'ttl', 'Telemetry'));
       this.who = new Field(hd, 'who');
       this.clock = new Field(hd, 'clock');
       root.appendChild(hd);
@@ -526,10 +528,10 @@
       const x = cx + m.lat * k, y = cy - m.long * k;
       this.trail.push(x, y);
       if (this.trail.length > 40) this.trail.splice(0, 2);
-      g.strokeStyle = 'rgba(255,200,74,0.35)'; g.beginPath();
+      g.strokeStyle = 'rgba(255,255,255,0.3)'; g.beginPath();
       for (let i = 0; i < this.trail.length; i += 2) (i ? g.lineTo : g.moveTo).call(g, this.trail[i], this.trail[i + 1]);
       g.stroke();
-      g.fillStyle = '#ffc84a'; g.beginPath(); g.arc(x, y, 3, 0, 2 * Math.PI); g.fill();
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, 3, 0, 2 * Math.PI); g.fill();
     }
 
     drawCar(m) {
@@ -551,7 +553,7 @@
         g.fillStyle = gripColour(wd.grip);
         g.fillRect(-ww / 2, wh / 2 - c * wh, ww, c * wh);                 // fill height: suspension compression
         g.setLineDash(wd.on ? [] : [2, 2]);
-        g.strokeStyle = wd.sliding ? '#ff8a76' : wd.on ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.35)';
+        g.strokeStyle = wd.sliding ? '#f55' : wd.on ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.35)';
         g.strokeRect(-ww / 2 + 0.5, -wh / 2 + 0.5, ww - 1, wh - 1);
         g.restore();
       }
@@ -567,7 +569,7 @@
         g.beginPath(); g.arc(cx, cy, R, Math.PI, 2 * Math.PI); g.stroke();
         if (ok) {
           const t = clamp(m.total / 180, 0, 1);
-          g.strokeStyle = t < 0.1 ? '#7be08a' : t < 0.3 ? '#ffc84a' : '#ff8a76';
+          g.strokeStyle = t < 0.1 ? '#5f5' : t < 0.3 ? '#ff5' : '#f55';
           g.beginPath(); g.arc(cx, cy, R, Math.PI, Math.PI + t * Math.PI); g.stroke();
         }
       }
@@ -575,7 +577,7 @@
       const view = (key, angle, draw) => {
         const { g, w, h } = this.angle[key].cv, cx = w / 2, cy = h / 2;
         g.clearRect(0, 0, w, h);
-        g.strokeStyle = 'rgba(140,211,255,0.85)'; g.fillStyle = 'rgba(140,211,255,0.85)'; g.lineWidth = 1.5;
+        g.strokeStyle = 'hsl(210, 100%, 65%)'; g.fillStyle = 'hsl(210, 100%, 65%)'; g.lineWidth = 1.5;
         draw.arrow(g, cx, cy, w, h);
         if (angle == null) return;
         g.save(); g.translate(cx, cy); g.rotate(angle / RAD);

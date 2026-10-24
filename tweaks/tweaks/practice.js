@@ -58,36 +58,38 @@
   const fmtSpeed = (v) => String(Math.round(v * 1000) / 1000);
 
   const CSS = `
-.pt-prac-panel { position:absolute; left:12px; top:50%; transform:translateY(-50%); z-index:35; padding:8px 12px; min-width:210px;
-  background:rgba(20,20,30,0.62); color:var(--text-color,#eef1ff); font-family:ForcedSquare, system-ui, sans-serif;
-  font-size:16px; line-height:1.45; pointer-events:none; }
+/* a HUD box on the left edge, like the checkpoint counter */
+.pt-prac-panel { position:absolute; left:var(--safe-area-horizontal); top:50%; transform:translateY(-50%); z-index:1; min-width:220px;
+  padding:8px 22px 10px 12px; background-color:var(--surface-color); opacity:0.9; color:var(--text-color); font-size:16px; line-height:1.45;
+  pointer-events:none; clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 100%, 0 100%); }
 .pt-prac-panel.hidden { display:none; }
-.pt-prac-panel h3 { margin:0 0 4px; font-size:17px; font-weight:normal; opacity:0.75; }
-.pt-prac-panel .speed { font-size:26px; }
-.pt-prac-panel .speed.slow { color:#8cd3ff; }
-.pt-prac-panel .speed.fast { color:#ffc06b; }
-.pt-prac-panel .speed small { font-size:16px; color:var(--text-color,#eef1ff); opacity:0.75; margin-left:6px; }
-.pt-prac-panel .slots { display:flex; gap:6px; margin:4px 0 2px; }
-.pt-prac-panel .slot { padding:1px 8px; background:rgba(255,255,255,0.08); opacity:0.5; }
-.pt-prac-panel .slot.filled { opacity:1; background:rgba(120,200,255,0.18); }
-.pt-prac-panel .slot.active { outline:1px solid rgba(255,255,255,0.5); }
-.pt-prac-panel .keys { font-size:14px; opacity:0.7; }
+.pt-prac-panel h3 { margin:0 0 4px; font-size:18px; font-weight:normal; opacity:0.5; }
+.pt-prac-panel .speed { display:inline-block; padding:2px 16px 2px 10px; font-size:28px; line-height:1.2; background-color:var(--surface-tertiary-color);
+  clip-path:polygon(0 0, calc(100% - 6px) 0, 100% 100%, 0 100%); }
+.pt-prac-panel .speed.slow { color:hsl(210, 100%, 65%); }
+.pt-prac-panel .speed.fast { color:#ff5; }
+.pt-prac-panel .speed small { font-size:16px; color:var(--text-color); opacity:0.5; margin-left:6px; }
+.pt-prac-panel .slots { display:flex; gap:4px; margin:6px 0 2px; }
+.pt-prac-panel .slot { padding:1px 10px; background-color:var(--surface-tertiary-color); opacity:0.5; }
+.pt-prac-panel .slot.filled { opacity:1; }
+.pt-prac-panel .slot.active { background-color:var(--button-hover-color); opacity:1; }
+.pt-prac-panel .keys { font-size:14px; opacity:0.75; }
 .pt-prac-panel .keys .pt-key { font-size:13px; }
-.pt-prac-panel .warn { font-size:14px; color:#ffd36b; }
+.pt-prac-panel .warn { font-size:14px; color:#ff5; }
 
 /* on the editor's second row, after the track name, shaped like it */
 .pt-speed { display:inline-flex; align-items:center; gap:4px; vertical-align:top; box-sizing:border-box;
   margin:-1px 0 0 0; padding:0 22px 0 12px; height:var(--pt-speed-h, 60px);
-  background:var(--surface-secondary-color); clip-path:polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  background-color:var(--surface-secondary-color); clip-path:polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
   color:var(--text-color); font-size:22px; pointer-events:auto; }
-.pt-speed.active { background:#2a3d7a; }
+.pt-speed.active { background-color:var(--button-hover-color); }
 .pt-speed > img { width:22px; height:22px; margin-right:2px; opacity:0.85; }
 .pt-speed .lbl { opacity:0.75; font-size:17px; }
 .pt-speed input { width:2.6em; padding:6px 4px; border:none; outline:none; text-align:center;
-  background:var(--button-color); color:var(--text-color); font:inherit; }
+  background-color:var(--button-color); color:var(--text-color); font:inherit; }
 .pt-speed input.until { width:4.2em; }
 .pt-speed:not(.active) button { display:none; }
-.pt-speed input.bad { box-shadow:inset 0 0 0 2px #ff7a6b; }
+.pt-speed input.bad { box-shadow:inset 0 0 0 2px #f55; }
 .pt-speed input::placeholder { color:var(--text-color); opacity:0.45; }
 .pt-speed button { padding:2px 8px; border:none; background:transparent; color:var(--text-color); font:inherit; opacity:0.7; cursor:pointer; }
 .pt-speed button:hover { opacity:1; }

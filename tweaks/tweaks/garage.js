@@ -17,10 +17,10 @@
   const CSS = `
 .customization-ui.pt-free-look > *:not(.top) { display:none !important; }
 .customization-ui.pt-free-look > .top > *:not(.pt-look) { visibility:hidden; }
-.pt-look-hint { position:absolute; left:50%; bottom:28px; transform:translateX(-50%); z-index:40; padding:8px 16px;
-  background:rgba(20,20,30,0.62); color:var(--text-color,#eef1ff); font-size:18px; line-height:1.5; text-align:center;
-  pointer-events:none; white-space:nowrap; }
-.pt-look-hint .pt-key { font-size:15px; }
+/* the game's own hint box, kept low so it doesn't cover the car you are looking at */
+.hint-ui.pt-look-hint { top:auto; bottom:30px; z-index:40; }
+.hint-ui.pt-look-hint > .subtitle { margin:0; font-size:20px; line-height:1.5; }
+.hint-ui.pt-look-hint > .subtitle > .key-binding { line-height:32px; min-width:32px; }
 `;
 
   const PTGarageCam = {
@@ -85,22 +85,29 @@
 
         update(dt) { spectator.update(dt * SPEED); },
 
+        /** The keys, in the box the game uses for its own hints ("Press T to try again"). */
         hint() {
-          const h = el('div', 'pt-look-hint');
+          const h = el('div', 'hint-ui pt-look-hint');
+          const sub = el('div', 'subtitle');
+          h.append(el('div', 'title'), sub);
           const K = window.PTKeys;
+          const chip = (text) => el('span', 'key-binding', text);
           const add = (names, what) => {
-            names.forEach((n, i) => { if (i) h.appendChild(document.createTextNode(' ')); h.appendChild(K ? K.caps(n) : document.createTextNode('?')); });
-            h.appendChild(document.createTextNode(' ' + what));
+            names.forEach((n) => {
+              const codes = K ? K.codes(n) : [];
+              sub.appendChild(chip(codes.length ? K.keyName(codes[0]) : '?'));
+            });
+            sub.appendChild(document.createTextNode(' ' + what));
           };
           add(['SpectatorMoveForwards', 'SpectatorMoveLeft', 'SpectatorMoveBackwards', 'SpectatorMoveRight'], 'move  ·  ');
           // the game's "Move up" binding moves the camera down (and "Move down" up), as in a race
           add(['SpectatorMoveUp'], 'down  ·  ');
           add(['SpectatorMoveDown'], 'up  ·  ');
           add(['SpectatorSpeedModifier'], 'faster  ·  drag to look');
-          h.appendChild(el('br'));
+          sub.appendChild(el('br'));
           add(['ToggleSpectatorCamera'], 'or ');
-          h.appendChild(K ? Object.assign(el('kbd', 'pt-key'), { textContent: 'Esc' }) : document.createTextNode('Esc'));
-          h.appendChild(document.createTextNode(' back to the car'));
+          sub.appendChild(chip('Esc'));
+          sub.appendChild(document.createTextNode(' back to the car'));
           return h;
         },
 

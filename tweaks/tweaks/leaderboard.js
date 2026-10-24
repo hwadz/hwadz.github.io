@@ -33,9 +33,9 @@
   const CSS = `
 .pt-lb-banner { margin:0 10px 8px; padding:6px 8px; font-size:15px; line-height:1.35;
   background:var(--surface-secondary-color, rgba(0,0,0,0.2)); color:var(--text-color); opacity:0.85; }
-.pt-lb-banner b { font-weight:normal; color:#ffc84a; }
+.pt-lb-banner b { font-weight:normal; color:#ff5; }
 .pt-lb-note { margin:0; padding:0 20px 16px; font-size:17px; line-height:1.4; text-align:center; color:var(--text-color); opacity:0.85; }
-.pt-lb-note a { color:#8cd3ff; }
+.pt-lb-note a { color:var(--text-color); }
 `;
 
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };

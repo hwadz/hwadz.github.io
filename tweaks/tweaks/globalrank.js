@@ -80,41 +80,21 @@
   }
 
   const CSS = `
-.pt-gr-overlay { position:absolute; left:0; top:0; width:100%; height:100%; z-index:50; display:flex; flex-direction:column;
-  background:rgb(20,20,30); color:var(--text-color); font-family:ForcedSquare, system-ui, sans-serif; pointer-events:auto; }
-.pt-gr-overlay.hidden { display:none; }
-.pt-gr-head { display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--surface-color); flex-wrap:wrap; }
-.pt-gr-head h1 { margin:0; font-size:28px; font-weight:normal; flex:1; white-space:nowrap; }
-.pt-gr-head .button { font-size:22px; padding:6px 14px; }
-.pt-gr-body { flex:1; overflow-y:auto; padding:14px 16px; }
-.pt-gr-note { font-size:16px; opacity:0.85; margin:4px 0 10px; max-width:1150px; line-height:1.4; }
-.pt-gr-how { font-size:15px; opacity:0.85; margin:0 0 12px; max-width:1150px; line-height:1.45; }
-.pt-gr-how summary { cursor:pointer; font-size:16px; }
-.pt-gr-progress { height:6px; background:rgba(255,255,255,0.1); margin:6px 0 12px; }
-.pt-gr-progress > div { height:100%; background:#ffc84a; width:0; transition:width 0.2s linear; }
-.pt-gr-tools { display:flex; gap:8px; align-items:center; margin:0 0 10px; flex-wrap:wrap; }
-.pt-gr-tools input { font-family:inherit; font-size:18px; padding:6px 10px; width:260px; background:var(--surface-secondary-color); color:var(--text-color); border:none; }
-.pt-gr-tools .button { font-size:18px; padding:5px 12px; }
-.pt-gr-tools .pages { margin-left:auto; display:flex; gap:6px; align-items:center; font-size:16px; }
-table.pt-gr-table { width:100%; border-collapse:collapse; font-size:17px; }
-table.pt-gr-table th { text-align:left; opacity:0.7; font-weight:normal; padding:4px 6px; border-bottom:1px solid rgba(255,255,255,0.15); white-space:nowrap; }
-table.pt-gr-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,255,0.06); white-space:nowrap; }
-table.pt-gr-table td.r { text-align:right; } table.pt-gr-table th.r { text-align:right; }
-table.pt-gr-table tr.p { cursor:pointer; }
-table.pt-gr-table tr.p:hover td { background:rgba(255,255,255,0.06); }
-table.pt-gr-table tr.me td { background:rgba(255,200,74,0.14); }
-table.pt-gr-table td.rating { color:#ffc84a; }
-table.pt-gr-table img.flag { height:14px; margin-right:6px; vertical-align:-1px; }
-table.pt-gr-table tr.detail > td { background:rgba(255,255,255,0.04); white-space:normal; padding:8px 12px 12px; }
-table.pt-gr-sub { width:100%; border-collapse:collapse; font-size:15px; margin-top:6px; }
-table.pt-gr-sub td, table.pt-gr-sub th { padding:2px 6px; border-bottom:1px solid rgba(255,255,255,0.05); }
-table.pt-gr-sub th { opacity:0.65; font-weight:normal; text-align:left; }
-.pt-gr-bar { display:inline-block; vertical-align:middle; width:80px; height:7px; margin-left:6px; background:rgba(255,255,255,0.08); }
-.pt-gr-bar > i { display:block; height:100%; background:#4fb3ff; }
+.pt-gr-overlay td.rating { font-size:24px; }
+.pt-gr-overlay td .pt-dim { margin-left:8px; font-size:0.8em; }
+.pt-gr-overlay tr.detail > td { height:auto; padding:12px 16px 14px; white-space:normal; background-color:var(--surface-tertiary-color); }
+.pt-gr-overlay tr.detail table.pt-list { margin-top:8px; font-size:18px; border-spacing:0 3px; }
+.pt-gr-overlay tr.detail table.pt-list td { height:30px; }
+.pt-gr-overlay .pt-gr-head { display:flex; align-items:center; gap:12px; font-size:20px; }
+.pt-gr-overlay .pt-gr-head > span { flex:1 1 auto; }
+.pt-gr-overlay .pt-gr-how { display:none; }
+.pt-gr-overlay.how .pt-gr-how { display:block; }
+.track-selection-ui > .bar > .button.pt-gr-open { margin:8px 12px 8px 0; }
 `;
 
   const PTGlobalRank = {
     overlay: null,
+    ui: null,                 // the screen (tweaks/ui.js)
     list: null,               // rated players, best first
     boards: [],
     page: 0,
@@ -126,7 +106,7 @@ table.pt-gr-sub th { opacity:0.65; font-weight:normal; text-align:left; }
       const st = el('style'); st.id = 'pt-globalrank-css'; st.textContent = CSS;
       document.head.appendChild(st);
       window.addEventListener('keydown', (e) => {
-        if (e.code === 'Escape' && this.overlay && !this.overlay.classList.contains('hidden')) {
+        if (e.code === 'Escape' && this.ui && this.ui.open) {
           e.preventDefault(); e.stopImmediatePropagation(); this.close();
         }
       }, true);
@@ -134,7 +114,9 @@ table.pt-gr-sub th { opacity:0.65; font-weight:normal; text-align:left; }
 
     selectionRefreshed(root) {
       try {
-        const bar = root && root.querySelector(':scope > .bar');
+        // the Play screen's track list only: the editor's Load dialog is the same list, drawn over the editor
+        if (!root || root.classList.contains('with-background')) return;
+        const bar = root.querySelector(':scope > .bar');
         if (!bar || bar.querySelector('.pt-gr-open')) return;
         const b = el('button', 'button pt-gr-open');
         b.innerHTML = '<img class="button-icon" src="images/trophy.svg"> ';
@@ -155,7 +137,7 @@ table.pt-gr-sub th { opacity:0.65; font-weight:normal; text-align:left; }
     },
 
     myId() { try { return window.__ptProfiles.getCurrentUserProfile().tokenHash; } catch { return null; } },
-    toast(text) { if (window.PTRuns && window.PTRuns.toast) window.PTRuns.toast(text); },
+    toast(text) { if (window.PTUI) window.PTUI.toast(text); },
 
     // ---------------------------------------------------------------- data
     /** Whatever boards are already in the cache: no requests. */
@@ -219,100 +201,100 @@ table.pt-gr-sub th { opacity:0.65; font-weight:normal; text-align:left; }
     // ---------------------------------------------------------------- the screen
     async open() {
       this.build();
-      this.overlay.classList.remove('hidden');
+      this.ui.show();
       if (!this.list && !this.batch) {
-        this.status.textContent = 'Reading what has been fetched before…';
+        this.ui.sub.textContent = 'Reading what has been fetched before…';
         this.recompute(await this.loadCached());
       }
       this.render();
     },
 
     close() {
-      if (!this.overlay) return;
-      this.overlay.classList.add('hidden');
+      if (!this.ui) return;
+      this.ui.hide();
       this.release();
     },
 
     /** While the page is shut, lets go of the boards and the list (IndexedDB has them); an update keeps them until it ends. */
     release() {
-      if (this.batch || !this.overlay || !this.overlay.classList.contains('hidden')) return;
+      if (this.batch || !this.ui || this.ui.open) return;
       this.list = null; this.boards = []; this.open_ = null;
       if (this.tableHost) this.tableHost.textContent = '';
     },
 
     build() {
-      if (this.overlay) return;
-      const o = el('div', 'pt-gr-overlay hidden');
-      const head = el('div', 'pt-gr-head');
-      head.appendChild(el('h1', null, 'Global ranking'));
-      const go = el('button', 'button', 'Update');
-      go.title = 'Read the tracks not read yet, or read more than a day ago';
-      go.addEventListener('click', () => this.runAll(false));
-      const again = el('button', 'button', 'Refresh all');
-      again.title = 'Read every track again';
-      again.addEventListener('click', () => this.runAll(true));
-      const stop = el('button', 'button', 'Stop');
-      stop.addEventListener('click', () => { if (this.batch) this.batch.stopped = true; });
-      const close = el('button', 'button', 'Close');
-      close.addEventListener('click', () => this.close());
-      head.append(go, again, stop, close);
-      o.appendChild(head);
+      if (this.ui) return;
+      const U = window.PTUI;
+      const shown = (sel) => { const e = document.querySelector(sel); return e && e.offsetParent !== null ? e : null; };
+      const P = U.page({
+        cls: 'pt-gr-overlay', title: 'Global ranking', tools: true, pager: true,
+        onBack: () => this.close(),
+        behind: () => [shown('.track-selection-ui')],
+      });
+      this.ui = P;
+      this.overlay = P.root;
 
-      const body = el('div', 'pt-gr-body');
-      this.status = el('p', 'pt-gr-note');
-      body.appendChild(this.status);
-      this.bar = el('div', 'pt-gr-progress'); this.bar.appendChild(el('div'));
-      body.appendChild(this.bar);
-      const how = el('details', 'pt-gr-how');
-      how.appendChild(el('summary', null, 'How players are rated'));
+      const search = U.search('Find a player…', (v) => { this.query = v.trim().toLowerCase(); this.page = 0; this.renderTable(); });
+      this.searchBox = search.input;
+      const me = U.button('Find me', 'pin.svg');
+      me.title = 'Jump to your own place in the ranking';
+      me.addEventListener('click', () => this.findMe());
+      P.tools.append(search, me);
+      this.progress = U.progress();
+      P.panel.insertBefore(this.progress.root, P.content);
+
+      const how = U.card(P.content, 'How players are rated');
+      how.classList.add('pt-gr-how');
       for (const line of [
         'Every official and community track’s top ' + TOP + ' verified runs are read. Each result scores by how far up that track’s whole field it sits: log₁₀(players on the leaderboard ÷ position) — #1 of 7 million scores 6.85, #100 of 7 million 4.85, #1 of 30 000 4.48. A bigger field is harder to top, so the same position counts for more on it.',
         'Equal times share a place (two players on the record time both hold it), and runs the leaderboard marks invalid or removed push no one down — so a position here can be a little better than the one the leaderboard shows.',
         'A player’s rating adds their results up best first, each next one counting 5 % less (×0.95, ×0.95², …), the way osu! weighs performance points: strong on many tracks beats strong on one, and the fortieth track still adds a little.',
         'It can’t be perfect. Players outside a track’s top ' + TOP + ' aren’t found on it; popular official tracks have the biggest fields, so they weigh more than smaller community tracks whose players are often stronger; and the leaderboards are only as clean as their verified runs.',
-      ]) how.appendChild(el('p', null, line));
-      body.appendChild(how);
+      ]) how.appendChild(el('p', 'pt-note', line));
+      this.tableHost = el('div', 'pt-list-wrap');
+      P.content.appendChild(this.tableHost);
 
-      const tools = el('div', 'pt-gr-tools');
-      const search = el('input');
-      search.type = 'text'; search.placeholder = 'Find a player…'; search.spellcheck = false;
-      search.addEventListener('input', () => { this.query = search.value.trim().toLowerCase(); this.page = 0; this.renderTable(); });
-      for (const t of ['keydown', 'keyup', 'keypress']) search.addEventListener(t, (e) => { if (e.key !== 'Escape') e.stopPropagation(); });
-      const me = el('button', 'button', 'Find me');
-      me.addEventListener('click', () => this.findMe());
-      this.pages = el('div', 'pages');
-      tools.append(search, me, this.pages);
-      body.appendChild(tools);
-      this.searchBox = search;
-      this.tableHost = el('div');
-      body.appendChild(this.tableHost);
-      o.appendChild(body);
-      (document.getElementById('ui') || document.body).appendChild(o);
-      this.overlay = o;
-      this.controls = { go, again, stop };
+      const howBtn = U.button('How it works', 'help.svg');
+      howBtn.addEventListener('click', () => {
+        const on = P.root.classList.toggle('how');
+        howBtn.classList.toggle('selected', on);
+        if (on) P.content.scrollTop = 0;
+      });
+      const again = U.button('Refresh all', 'refresh.svg');
+      again.title = 'Read every track again, even the ones read today';
+      again.addEventListener('click', () => this.runAll(true));
+      const go = U.button('Update', 'import.svg');
+      go.title = 'Read the tracks not read yet, or read more than a day ago';
+      go.addEventListener('click', () => { if (this.batch) this.batch.stopped = true; else this.runAll(false); });
+      P.bar.append(howBtn, el('div', 'pt-grow'), again, go);
+      this.controls = { go, again };
     },
 
     render() {
-      if (!this.overlay) return;
+      if (!this.ui) return;
+      const U = window.PTUI;
       const b = this.batch, tracks = this.trackList().length;
-      this.controls.go.disabled = !!b; this.controls.again.disabled = !!b; this.controls.stop.disabled = !b;
+      U.relabel(this.controls.go, b ? 'Stop' : 'Update', b ? 'cancel.svg' : 'import.svg');
+      this.controls.again.disabled = !!b;
+      const sub = this.ui.sub;
       if (b) {
         const left = b.total - b.done;
         const eta = b.done ? Math.round(((Date.now() - b.startedAt) / b.done) * left / 1000) : null;
-        this.status.textContent = 'Reading leaderboards: ' + b.done + ' of ' + b.total + ' tracks' + (b.failed ? ' (' + b.failed + ' failed)' : '')
+        sub.textContent = 'Reading leaderboards: ' + b.done + ' of ' + b.total + ' tracks' + (b.failed ? ' (' + b.failed + ' failed)' : '')
           + (eta != null && left ? ' · about ' + (eta >= 60 ? Math.round(eta / 60) + ' min' : eta + ' s') + ' left' : '')
           + (this.list && this.list.length ? ' · ' + num(this.list.length) + ' players so far' : '') + '…';
-        this.bar.firstChild.style.width = (100 * b.done / Math.max(1, b.total)).toFixed(1) + '%';
+        this.progress.set(b.done / Math.max(1, b.total));
+        this.progress.root.style.display = '';
       } else if (this.list && this.list.length) {
-        this.status.textContent = num(this.list.length) + ' players rated from ' + this.boards.length + ' of ' + tracks
-          + ' tracks (the top ' + TOP + ' verified runs of each)' + (isFinite(this.oldest) ? ' · oldest data ' + ago(this.oldest) : '')
-          + (this.boards.length < tracks ? ' · press Update to read the rest' : '') + (this.lastError ? ' · last problem: ' + this.lastError : '');
-        this.bar.firstChild.style.width = (100 * this.boards.length / Math.max(1, tracks)).toFixed(1) + '%';
+        sub.textContent = num(this.list.length) + ' players from ' + this.boards.length + ' of ' + tracks + ' tracks (the top ' + TOP + ' verified runs of each)'
+          + (isFinite(this.oldest) ? ' · oldest data ' + ago(this.oldest) : '')
+          + (this.boards.length < tracks ? ' · Update reads the rest' : '') + (this.lastError ? ' · last problem: ' + this.lastError : '');
+        this.progress.root.style.display = 'none';
       } else {
-        this.status.textContent = 'Nothing read yet. Update reads the top ' + TOP + ' runs of all ' + tracks + ' official and community tracks — '
+        sub.textContent = 'Nothing read yet — Update reads the top ' + TOP + ' runs of all ' + tracks + ' official and community tracks: '
           + (2 * tracks) + ' requests, about ' + Math.max(1, Math.round(tracks * 1.7 / 60)) + ' minutes, kept for a day and shared with the Z-scores.'
           + (this.lastError ? ' Last problem: ' + this.lastError : '');
-        this.bar.firstChild.style.width = '0';
+        this.progress.root.style.display = 'none';
       }
       this.renderTable();
     },
@@ -332,47 +314,42 @@ table.pt-gr-sub th { opacity:0.65; font-weight:normal; text-align:left; }
       this.page = Math.floor(i / PER_PAGE);
       this.open_ = id;
       this.renderTable();
-      const row = this.tableHost.querySelector('tr.me');
+      const row = this.tableHost.querySelector('tr.self');
       if (row) row.scrollIntoView({ block: 'center' });
     },
 
     renderTable() {
       if (!this.tableHost) return;
+      const U = window.PTUI;
       const rows = this.filtered();
       const pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
       this.page = Math.min(this.page, pages - 1);
-      this.pages.textContent = '';
-      const nav = (label, to, off) => {
-        const b = el('button', 'button', label);
-        b.disabled = off;
-        b.addEventListener('click', () => { this.page = to; this.renderTable(); });
-        this.pages.appendChild(b);
-      };
-      nav('‹', this.page - 1, this.page === 0);
-      this.pages.appendChild(el('span', null, 'page ' + (this.page + 1) + ' of ' + pages));
-      nav('›', this.page + 1, this.page >= pages - 1);
+      U.pager(this.ui.pages, this.page, pages, (to) => { this.page = to; this.renderTable(); this.ui.content.scrollTop = 0; });
       this.tableHost.textContent = '';
       if (!rows.length) {
-        if (this.list && this.list.length) this.tableHost.appendChild(el('p', 'pt-gr-note', 'No player matches.'));
+        if (this.list && this.list.length) this.tableHost.appendChild(el('p', 'pt-note', 'No player matches.'));
         return;
       }
       const me = this.myId();
-      const table = el('table', 'pt-gr-table');
-      table.innerHTML = '<tr><th class="r">#</th><th>Player</th><th class="r">Rating</th><th class="r">Tracks</th><th class="r">WRs</th>'
-        + '<th class="r">Top 3</th><th class="r">Top 10</th><th>Best result</th></tr>';
+      const table = U.list([['#', 'r'], 'Player', ['Rating', 'r'], ['Tracks', 'r'], ['WRs', 'r'], ['Top 3', 'r'], ['Top 10', 'r'], 'Best result'], 'pt-gr-table');
       for (const p of rows.slice(this.page * PER_PAGE, (this.page + 1) * PER_PAGE)) {
-        const tr = el('tr', 'p' + (p.userId === me ? ' me' : ''));
-        tr.appendChild(el('td', 'r', String(p.rank)));
+        const tr = el('tr', 'click' + (p.userId === me ? ' self' : '') + (this.open_ === p.userId ? ' open' : ''));
+        const pos = el('td', 'r');
+        pos.appendChild(U.ordinal(p.rank));
+        tr.appendChild(pos);
         const name = el('td');
         if (p.countryCode) { const f = el('img', 'flag'); f.src = 'images/countries/' + p.countryCode + '.svg'; f.loading = 'lazy'; name.appendChild(f); }
-        name.append(p.nickname + (p.userId === me ? ' (you)' : ''));
+        name.append(p.nickname);
+        if (p.userId === me) name.appendChild(el('span', 'pt-dim', 'you'));
         tr.appendChild(name);
         tr.appendChild(el('td', 'r rating', p.rating.toFixed(2)));
         tr.appendChild(el('td', 'r', String(p.tracks)));
-        tr.appendChild(el('td', 'r', String(p.wrs)));
+        tr.appendChild(el('td', 'r' + (p.wrs ? ' pt-gold' : ''), String(p.wrs)));
         tr.appendChild(el('td', 'r', String(p.podiums)));
         tr.appendChild(el('td', 'r', String(p.top10)));
-        tr.appendChild(el('td', null, '#' + p.best.pos + ' ' + p.best.track + ' (' + topPct(p.best.pos, p.best.total) + ')'));
+        const best = el('td', null, p.best.track);
+        best.appendChild(el('span', 'pt-dim', '#' + p.best.pos + ' · ' + topPct(p.best.pos, p.best.total)));
+        tr.appendChild(best);
         tr.addEventListener('click', () => { this.open_ = this.open_ === p.userId ? null : p.userId; this.renderTable(); });
         table.appendChild(tr);
         if (this.open_ === p.userId) table.appendChild(this.detailRow(p));
@@ -381,37 +358,37 @@ table.pt-gr-sub th { opacity:0.65; font-weight:normal; text-align:left; }
     },
 
     detailRow(p) {
+      const U = window.PTUI;
       const tr = el('tr', 'detail');
       const td = el('td');
       td.colSpan = 8;
-      const top = el('div', 'pt-gr-tools');
-      top.appendChild(el('span', null, p.nickname + ' — rating ' + p.rating.toFixed(2) + ' from ' + p.tracks + (p.tracks === 1 ? ' track' : ' tracks')
+      const head = el('div', 'pt-gr-head');
+      head.appendChild(el('span', null, p.nickname + ' — rating ' + p.rating.toFixed(2) + ' from ' + p.tracks + (p.tracks === 1 ? ' track' : ' tracks')
         + (p.tracks > 10 ? ' · the best 10 make up ' + Math.round(100 * p.results.slice(0, 10).reduce((s, x) => s + x.points, 0) / p.rating) + '% of it' : '')));
       if (window.PTProfile && window.PTProfile.open) {
-        const prof = el('button', 'button', 'Profile');
+        const prof = U.button('Profile', 'helmet.svg');
+        prof.classList.add('small');
         prof.addEventListener('click', (e) => { e.stopPropagation(); window.PTProfile.open(p.userId, p.nickname, p.countryCode); });
-        top.appendChild(prof);
+        head.appendChild(prof);
       }
-      td.appendChild(top);
-      const sub = el('table', 'pt-gr-sub');
-      sub.innerHTML = '<tr><th>Track</th><th>Position</th><th>Time</th><th>Standing</th><th>Score</th><th>Counts ×</th><th>Points</th></tr>';
+      td.appendChild(head);
+      const sub = U.list(['Track', ['Position', 'r'], ['Time', 'r'], ['Standing', 'r'], ['Score', 'r'], ['Counts ×', 'r'], ['Points', 'r']]);
       const best = p.results[0] ? p.results[0].score : 1;
       for (const x of p.results.slice(0, 40)) {
         const r = el('tr');
         r.appendChild(el('td', null, x.track));
-        r.appendChild(el('td', null, '#' + num(x.pos) + (x.tied ? ' (tied)' : '') + ' of ' + num(x.total)));
-        r.appendChild(el('td', null, fmtTime(x.frames)));
-        r.appendChild(el('td', null, topPct(x.pos, x.total)));
-        const sc = el('td', null, x.score.toFixed(2));
-        const bar = el('span', 'pt-gr-bar'); const fill = el('i'); fill.style.width = (100 * x.score / Math.max(best, 1e-9)).toFixed(1) + '%';
-        bar.appendChild(fill); sc.appendChild(bar);
+        r.appendChild(el('td', 'r', '#' + num(x.pos) + (x.tied ? ' (tied)' : '') + ' of ' + num(x.total)));
+        r.appendChild(el('td', 'r', fmtTime(x.frames)));
+        r.appendChild(el('td', 'r', topPct(x.pos, x.total)));
+        const sc = el('td', 'r', x.score.toFixed(2));
+        sc.appendChild(U.meter(x.score / Math.max(best, 1e-9)));
         r.appendChild(sc);
-        r.appendChild(el('td', null, x.weight.toFixed(3)));
-        r.appendChild(el('td', null, x.points.toFixed(2)));
+        r.appendChild(el('td', 'r', x.weight.toFixed(3)));
+        r.appendChild(el('td', 'r', x.points.toFixed(2)));
         sub.appendChild(r);
       }
       td.appendChild(sub);
-      if (p.results.length > 40) td.appendChild(el('p', 'pt-gr-note', 'and ' + (p.results.length - 40) + ' more tracks, adding ' + p.results.slice(40).reduce((s, x) => s + x.points, 0).toFixed(2) + ' together.'));
+      if (p.results.length > 40) td.appendChild(el('p', 'pt-note', 'and ' + (p.results.length - 40) + ' more tracks, adding ' + p.results.slice(40).reduce((s, x) => s + x.points, 0).toFixed(2) + ' together.'));
       tr.appendChild(td);
       return tr;
     },

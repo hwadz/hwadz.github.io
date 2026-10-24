@@ -66,52 +66,35 @@
 
   const CSS = `
 /* tiles: the z in a corner, the details over the thumbnail on hover or keyboard focus */
-.track-selection-ui .track > .button > .pt-z-badge { position:absolute; left:12px; top:46px; z-index:2; padding:1px 7px;
-  font-size:17px; line-height:1.35; background:rgba(8,12,36,0.62); color:var(--text-color); pointer-events:none; }
-.track-selection-ui .track > .button > .pt-z-badge.warm { color:#ffc86b; }
-.track-selection-ui .track > .button > .pt-z-badge.hot { color:#ff8a76; }
+.track-selection-ui .track > .button > .pt-z-badge { position:absolute; left:10px; top:44px; z-index:2; padding:2px 10px 2px 8px;
+  font-size:18px; line-height:1.2; background-color:var(--surface-tertiary-color); color:var(--text-color); pointer-events:none;
+  clip-path:polygon(0 0, 100% 0, calc(100% - 6px) 100%, 0 100%); }
+.track-selection-ui .track > .button > .pt-z-badge.warm { color:#ff5; }
+.track-selection-ui .track > .button > .pt-z-badge.hot { color:#f55; }
 .track-selection-ui .track > .button > .pt-z-more { position:absolute; left:0; right:0; top:var(--pt-z-top, 40px); height:168px;
-  z-index:2; display:none; flex-direction:column; justify-content:center; gap:1px; padding:6px 12px; box-sizing:border-box;
-  background:rgba(8,12,36,0.88); color:var(--text-color); font-size:15px; line-height:1.3; text-align:left; white-space:normal;
+  z-index:2; display:none; flex-direction:column; justify-content:center; gap:2px; padding:6px 14px; box-sizing:border-box;
+  background-color:rgba(17, 32, 82, 0.94); color:var(--text-color); font-size:16px; line-height:1.3; text-align:left; white-space:normal;
   pointer-events:none; }
-.track-selection-ui .track > .button > .pt-z-more b { font-weight:normal; font-size:19px; color:#ffc86b; }
-.track-selection-ui .track > .button > .pt-z-more .dim { opacity:0.7; }
+.track-selection-ui .track > .button > .pt-z-more b { font-weight:normal; font-size:22px; }
+.track-selection-ui .track > .button > .pt-z-more .dim { opacity:0.5; }
 .track-selection-ui .track > .button:hover > .pt-z-more,
 .track-selection-ui .track > .button:focus-visible > .pt-z-more { display:flex; }
 .track-selection-ui .track > .button:hover > .pt-z-badge,
 .track-selection-ui .track > .button:focus-visible > .pt-z-badge { display:none; }
 .track-selection-ui > .bar > .button.pt-z-open { margin:8px 12px 8px 0; }
 
-/* leaderboard */
-.leaderboard-ui > .pt-z-summary { margin:-4px 10px 8px; min-height:0; font-size:16px; text-align:center; color:var(--text-color); opacity:0.85; }
+/* leaderboard: a line under the title like its own "Version" line, and a button like "Only verified" */
+.leaderboard-ui > .pt-z-summary { margin:-6px 10px 10px; font-size:18px; text-align:center; color:var(--text-color); opacity:0.75; }
 .leaderboard-ui > .pt-z-summary:empty { display:none; }
-.leaderboard-ui > .pt-z-summary b { font-weight:normal; color:#ffc86b; }
 .leaderboard-ui > .button-wrapper > .button.pt-z-btn { margin:10px 10px 10px 0; float:right; font-size:20px; line-height:32px; }
-.pt-z-entry { font-size:16px; opacity:0.85; color:#c9d3ff; }
+.leaderboard-ui > .button-wrapper > .button.pt-z-btn > img.button-icon { width:26px; height:26px; margin:-4px 0 0 4px; }
+.pt-z-entry { font-size:16px; opacity:0.75; }
 #ui .leaderboard-ui > .container > button.main:has(.pt-z-entry:not(:empty)) > div > .name-container { padding-right:165px; }
 
-/* the all-tracks panel */
-.pt-z-overlay { position:absolute; left:0; top:0; width:100%; height:100%; z-index:50; display:flex; flex-direction:column;
-  background:rgba(20,20,30,0.9); color:var(--text-color); font-family:ForcedSquare, system-ui, sans-serif; pointer-events:auto; }
-.pt-z-overlay.hidden { display:none; }
-.pt-z-head { display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--surface-color); flex-wrap:wrap; }
-.pt-z-head h1 { margin:0; font-size:28px; font-weight:normal; flex:1; white-space:nowrap; }
-.pt-z-head .button { font-size:22px; padding:6px 14px; }
-.pt-z-head .sample { display:flex; align-items:center; gap:4px; font-size:18px; }
-.pt-z-head .sample button { padding:4px 10px; border:none; background:var(--surface-secondary-color); color:var(--text-color); font:inherit; cursor:pointer; opacity:0.7; }
-.pt-z-head .sample button.on { opacity:1; background:var(--button-hover-color, #3a4a9a); }
-.pt-z-body { flex:1; overflow-y:auto; padding:14px 16px; }
-.pt-z-note { font-size:16px; opacity:0.8; margin:4px 0 10px; max-width:1100px; line-height:1.4; }
-.pt-z-progress { height:6px; background:rgba(255,255,255,0.1); margin:6px 0 12px; }
-.pt-z-progress > div { height:100%; background:#ffc84a; width:0; transition:width 0.2s linear; }
-table.pt-z-table { width:100%; border-collapse:collapse; font-size:17px; }
-table.pt-z-table th { text-align:left; opacity:0.7; font-weight:normal; padding:4px 6px; border-bottom:1px solid rgba(255,255,255,0.15); cursor:pointer; white-space:nowrap; }
-table.pt-z-table th:hover { opacity:1; text-decoration:underline; }
-table.pt-z-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,255,0.06); white-space:nowrap; }
-table.pt-z-table td.z { color:#ffc86b; }
-table.pt-z-table tr.old td { opacity:0.55; }
-table.pt-z-table td button { padding:0 8px; border:none; background:transparent; color:var(--text-color); font:inherit; opacity:0.6; cursor:pointer; }
-table.pt-z-table td button:hover { opacity:1; }
+/* the all-tracks screen */
+.pt-z-overlay .pt-z-z { font-size:24px; }
+.pt-z-overlay td .pt-dim { margin-left:8px; font-size:0.8em; }
+.pt-z-overlay td .button > img { width:18px; height:18px; vertical-align:-3px; }
 `;
 
   const PTZScore = {
@@ -132,7 +115,7 @@ table.pt-z-table td button:hover { opacity:1; }
       const st = el('style'); st.id = 'pt-zscore-css'; st.textContent = CSS;
       document.head.appendChild(st);
       window.addEventListener('keydown', (e) => {
-        if (e.code === 'Escape' && this.overlay && !this.overlay.classList.contains('hidden')) { e.preventDefault(); e.stopImmediatePropagation(); this.close(); }
+        if (e.code === 'Escape' && this.ui && this.ui.open) { e.preventDefault(); e.stopImmediatePropagation(); this.close(); }
       }, true);
     },
 
@@ -205,7 +188,7 @@ table.pt-z-table td button:hover { opacity:1; }
       return { rank: sorted.indexOf(rec.z) + 1, of: sorted.length, top: sorted.indexOf(rec.z) / sorted.length };
     },
 
-    toast(text) { if (window.PTRuns && window.PTRuns.toast) window.PTRuns.toast(text); else log(text); },
+    toast(text) { if (window.PTUI) window.PTUI.toast(text); else log(text); },
 
     explainError(e) {
       const msg = (e && e.message) || String(e);
@@ -255,7 +238,8 @@ table.pt-z-table td button:hover { opacity:1; }
     selectionRefreshed(root) {
       this.tiles = this.tiles.filter((t) => t.button.isConnected);
       try {
-        const bar = root && root.querySelector(':scope > .bar');
+        // the Play screen's track list only: the editor's Load dialog is the same list, drawn over the editor
+        const bar = root && !root.classList.contains('with-background') && root.querySelector(':scope > .bar');
         if (bar && !bar.querySelector('.pt-z-open')) {
           const b = el('button', 'button pt-z-open');
           b.innerHTML = '<img class="button-icon" src="images/graph.svg"> ';
@@ -274,7 +258,8 @@ table.pt-z-table td button:hover { opacity:1; }
         const summary = el('div', 'pt-z-summary');
         const h3 = root.querySelector(':scope > h3');
         root.insertBefore(summary, h3 ? h3.nextSibling : root.firstChild);
-        const b = el('button', 'button pt-z-btn', 'Z-score');
+        const b = el('button', 'button pt-z-btn');
+        window.PTUI.relabel(b, 'Z-score', 'graph.svg', true);
         b.title = 'How strong this track’s world record is, and each run’s z';
         buttons.appendChild(b);
         const name = this.nameOf(trackId);
@@ -310,12 +295,12 @@ table.pt-z-table td button:hover { opacity:1; }
 
     paintBoard(board) {
       const rec = this.get(board.trackId);
-      board.button.textContent = rec ? 'Z-score ↻' : 'Z-score';
+      window.PTUI.relabel(board.button, 'Z-score', rec ? 'refresh.svg' : 'graph.svg', true);
       board.summary.textContent = '';
       if (!rec) return;
       if (rec.z == null) { board.summary.textContent = 'Not enough times on this leaderboard for a z-score.'; return; }
       board.summary.appendChild(document.createTextNode('WR z-score '));
-      board.summary.appendChild(el('b', null, fmtZ(rec.z)));
+      board.summary.appendChild(el('span', null, fmtZ(rec.z)));
       board.summary.appendChild(document.createTextNode('  ·  top ' + rec.n + (rec.verified ? ' verified' : '') + ' mean ' + fmtTime(Math.round(rec.mean))
         + '  ·  σ ' + fmtSd(rec.sd) + '  ·  ' + ago(rec.at)));
       board.summary.title = 'z = (mean − world record) ÷ σ over the top ' + rec.n + ' runs. Each run shows its own (mean − time) ÷ σ.';
@@ -358,95 +343,83 @@ table.pt-z-table td button:hover { opacity:1; }
       // a new result can move every other track's rank, so all tiles are repainted
       for (const t of this.tiles) this.paintTile(t.button, t.id === id ? rec : this.get(t.id));
       if (this.board && this.board.trackId === id) this.paintBoard(this.board);
-      if (this.overlay && !this.overlay.classList.contains('hidden')) this.renderTable();
+      if (this.ui && this.ui.open) this.renderTable();
     },
 
     // ---------------------------------------------------------------- every track at once
     open() {
       this.build();
-      this.overlay.classList.remove('hidden');
+      this.ui.show();
       this.render();
     },
 
     close() {
-      if (this.overlay) this.overlay.classList.add('hidden');
+      if (this.ui) this.ui.hide();
     },
 
     build() {
-      if (this.overlay) return;
-      const o = el('div', 'pt-z-overlay hidden');
-      const head = el('div', 'pt-z-head');
-      head.appendChild(el('h1', null, 'Z-scores'));
-      const sample = el('div', 'sample');
-      sample.appendChild(el('span', null, 'Top'));
-      for (const n of SAMPLES) {
-        const b = el('button', null, String(n));
-        b.dataset.n = String(n);
-        b.addEventListener('click', () => {
-          if (this.batch) return this.toast('Stop the calculation before changing the sample.');
-          this.prefs.sample = n; this.savePrefs();
-          for (const t of this.tiles) if (t.button.isConnected) this.paintTile(t.button, this.get(t.id));
-          if (this.board) this.paintBoard(this.board);
-          this.render();
-        });
-        sample.appendChild(b);
-      }
-      head.appendChild(sample);
-      const go = el('button', 'button', 'Calculate all');
-      go.addEventListener('click', () => this.runAll(false));
-      const again = el('button', 'button', 'Recalculate all');
-      again.title = 'Ask again even for tracks calculated in the last day';
-      again.addEventListener('click', () => this.runAll(true));
-      const stop = el('button', 'button', 'Stop');
-      stop.addEventListener('click', () => { if (this.batch) this.batch.stopped = true; });
-      const close = el('button', 'button', 'Close');
-      close.addEventListener('click', () => this.close());
-      head.append(go, again, stop, close);
-      o.appendChild(head);
-      const body = el('div', 'pt-z-body');
-      body.appendChild(el('p', 'pt-z-note',
+      if (this.ui) return;
+      const U = window.PTUI;
+      const shown = (sel) => { const e = document.querySelector(sel); return e && e.offsetParent !== null ? e : null; };
+      const P = U.page({ cls: 'pt-z-overlay', title: 'Z-scores', tools: true, onBack: () => this.close(), behind: () => [shown('.track-selection-ui')] });
+      this.ui = P;
+      this.overlay = P.root;
+      P.tools.appendChild(el('span', 'pt-note', 'Sample'));
+      const sample = U.choice(SAMPLES.map((n) => [n, 'Top ' + n]), this.prefs.sample, (n) => {
+        if (this.batch) { this.toast('Stop the calculation before changing the sample.'); this.render(); return; }
+        this.prefs.sample = n; this.savePrefs();
+        for (const t of this.tiles) if (t.button.isConnected) this.paintTile(t.button, this.get(t.id));
+        if (this.board) this.paintBoard(this.board);
+        this.render();
+      });
+      P.tools.appendChild(sample);
+      P.tools.appendChild(el('span', 'pt-note pt-grow', 'Compare tracks with the same sample only: a bigger sample spreads wider and puts the record further out.'));
+      this.progress = U.progress();
+      P.panel.insertBefore(this.progress.root, P.content);
+      const about = el('p', 'pt-note',
         'How far each track’s world record is ahead of the best runs on its leaderboard, in standard deviations: '
         + 'z = (mean − WR) ÷ σ over the top runs (verified runs, as the game’s leaderboard shows them). '
-        + 'The higher the z, the further the record stands out from everyone else — the harder it is to beat. '
-        + 'Compare tracks with the same sample size only.'));
-      this.status = el('p', 'pt-z-note');
-      body.appendChild(this.status);
-      this.bar = el('div', 'pt-z-progress');
-      this.bar.appendChild(el('div'));
-      body.appendChild(this.bar);
-      this.tableHost = el('div');
-      body.appendChild(this.tableHost);
-      o.appendChild(body);
-      (document.getElementById('ui') || document.body).appendChild(o);
-      this.overlay = o;
-      this.controls = { go, again, stop, sample };
+        + 'The higher the z, the further the record stands out from everyone else — the harder it is to beat.');
+      P.content.appendChild(about);
+      this.tableHost = el('div', 'pt-list-wrap');
+      P.content.appendChild(this.tableHost);
+      const again = U.button('Recalculate all', 'refresh.svg');
+      again.title = 'Ask again even for tracks calculated in the last day';
+      again.addEventListener('click', () => this.runAll(true));
+      const go = U.button('Calculate all', 'graph.svg');
+      go.title = 'Calculate the tracks not calculated yet, or more than a day ago';
+      go.addEventListener('click', () => { if (this.batch) this.batch.stopped = true; else this.runAll(false); });
+      P.bar.append(el('div', 'pt-grow'), again, go);
+      this.controls = { go, again, sample };
     },
 
     render() {
-      if (!this.overlay) return;
-      for (const b of this.controls.sample.querySelectorAll('button')) b.classList.toggle('on', Number(b.dataset.n) === this.prefs.sample);
-      this.controls.go.disabled = !!this.batch;
+      if (!this.ui) return;
+      const U = window.PTUI;
+      for (const b of this.controls.sample.children) b.classList.toggle('selected', b.textContent === 'Top ' + this.prefs.sample);
+      U.relabel(this.controls.go, this.batch ? 'Stop' : 'Calculate all', this.batch ? 'cancel.svg' : 'graph.svg');
       this.controls.again.disabled = !!this.batch;
-      this.controls.stop.disabled = !this.batch;
       const tracks = this.trackList();
       const known = tracks.filter((t) => this.get(t.id)).length;
       const b = this.batch;
       if (b) {
         const left = b.total - b.done;
         const eta = b.done ? Math.round(((Date.now() - b.startedAt) / b.done) * left / 1000) : null;
-        this.status.textContent = 'Calculating: ' + b.done + ' of ' + b.total + ' tracks' + (b.failed ? ' (' + b.failed + ' failed)' : '')
+        this.ui.sub.textContent = 'Calculating: ' + b.done + ' of ' + b.total + ' tracks' + (b.failed ? ' (' + b.failed + ' failed)' : '')
           + (eta != null && left ? ' · about ' + (eta >= 60 ? Math.round(eta / 60) + ' min' : eta + ' s') + ' left' : '') + '…';
-        this.bar.firstChild.style.width = (100 * b.done / Math.max(1, b.total)).toFixed(1) + '%';
+        this.progress.set(b.done / Math.max(1, b.total));
+        this.progress.root.style.display = '';
       } else {
-        this.status.textContent = known + ' of ' + tracks.length + ' official and community tracks calculated (top ' + this.prefs.sample + ').'
+        this.ui.sub.textContent = known + ' of ' + tracks.length + ' official and community tracks calculated (top ' + this.prefs.sample + ').'
           + (this.lastError ? ' Last problem: ' + this.lastError : '');
-        this.bar.firstChild.style.width = (100 * known / Math.max(1, tracks.length)).toFixed(1) + '%';
+        this.progress.root.style.display = 'none';
       }
       this.renderTable();
     },
 
     renderTable() {
       if (!this.tableHost) return;
+      const U = window.PTUI;
       const tracks = this.trackList();
       const rows = tracks.map((t) => ({ t, r: this.get(t.id) })).filter((x) => x.r);
       const k = this.sort.key, d = this.sort.dir;
@@ -470,12 +443,12 @@ table.pt-z-table td button:hover { opacity:1; }
         if (vb == null) return -1;
         return va < vb ? -d : va > vb ? d : 0;
       });
-      const table = el('table', 'pt-z-table');
+      const table = el('table', 'pt-list pt-z-table');
       const thead = el('tr');
-      const cols = [['rank', '#'], ['name', 'Track'], ['type', 'Kind'], ['z', 'z'], ['wr', 'World record'], ['mean', 'Mean (top)'],
-        ['sd', 'σ'], ['gap2', '#2 behind'], ['total', 'Players'], ['at', 'Updated'], ['', '']];
-      for (const [key, label] of cols) {
-        const th = el('th', null, label + (key && key === k ? (d < 0 ? ' ▾' : ' ▴') : ''));
+      const cols = [['rank', '#', 'r'], ['name', 'Track'], ['type', 'Kind'], ['z', 'z', 'r'], ['wr', 'World record'], ['mean', 'Mean', 'r'],
+        ['sd', 'σ', 'r'], ['gap2', '#2 behind', 'r'], ['total', 'Players', 'r'], ['at', 'Updated', 'r'], ['', '']];
+      for (const [key, label, align] of cols) {
+        const th = el('th', (align || '') + (key && key !== 'rank' ? ' sort' : '') + (key === k ? ' sorted' : ''), label + (key && key === k ? (d < 0 ? ' ▾' : ' ▴') : ''));
         if (key && key !== 'rank') th.addEventListener('click', () => {
           this.sort = { key, dir: this.sort.key === key ? -this.sort.dir : (key === 'name' || key === 'type' ? 1 : -1) };
           this.renderTable();
@@ -484,20 +457,24 @@ table.pt-z-table td button:hover { opacity:1; }
       }
       table.appendChild(thead);
       rows.forEach(({ t, r }, i) => {
-        const tr = el('tr');
-        if (Date.now() - r.at > TTL) tr.classList.add('old');
-        tr.appendChild(el('td', null, String(i + 1)));
+        const tr = el('tr', Date.now() - r.at > TTL ? 'faded' : null);
+        const pos = el('td', 'r');
+        pos.appendChild(U.ordinal(i + 1));
+        tr.appendChild(pos);
         tr.appendChild(el('td', null, t.name));
         tr.appendChild(el('td', null, t.type === 'community' ? 'community ' + (t.group || '') : t.type));
-        tr.appendChild(el('td', 'z', fmtZ(r.z)));
-        tr.appendChild(el('td', null, fmtTime(r.wr) + (r.wrName ? '  ' + r.wrName : '')));
-        tr.appendChild(el('td', null, r.mean == null ? '—' : fmtTime(Math.round(r.mean))));
-        tr.appendChild(el('td', null, r.sd == null ? '—' : fmtSd(r.sd)));
-        tr.appendChild(el('td', null, r.gap2 == null ? '—' : fmtSigned(r.gap2) + 'σ'));
-        tr.appendChild(el('td', null, r.total == null ? '—' : r.total.toLocaleString()));
-        tr.appendChild(el('td', null, ago(r.at)));
-        const td = el('td');
-        const again = el('button', null, '↻');
+        tr.appendChild(el('td', 'r pt-z-z', fmtZ(r.z)));
+        const wr = el('td', null, fmtTime(r.wr));
+        if (r.wrName) wr.appendChild(el('span', 'pt-dim', r.wrName));
+        tr.appendChild(wr);
+        tr.appendChild(el('td', 'r', r.mean == null ? '—' : fmtTime(Math.round(r.mean))));
+        tr.appendChild(el('td', 'r', r.sd == null ? '—' : fmtSd(r.sd)));
+        tr.appendChild(el('td', 'r', r.gap2 == null ? '—' : fmtSigned(r.gap2) + 'σ'));
+        tr.appendChild(el('td', 'r', r.total == null ? '—' : r.total.toLocaleString()));
+        tr.appendChild(el('td', 'r', ago(r.at)));
+        const td = el('td', 'r');
+        const again = el('button', 'button');
+        again.innerHTML = '<img src="images/refresh.svg">';
         again.title = 'Calculate this track again';
         again.addEventListener('click', () => {
           again.disabled = true;
@@ -508,7 +485,7 @@ table.pt-z-table td button:hover { opacity:1; }
         table.appendChild(tr);
       });
       this.tableHost.textContent = '';
-      if (!rows.length) this.tableHost.appendChild(el('p', 'pt-z-note', 'Nothing calculated yet at this sample size. Press Calculate all.'));
+      if (!rows.length) this.tableHost.appendChild(el('p', 'pt-note', 'Nothing calculated yet at this sample size. Press Calculate all.'));
       else this.tableHost.appendChild(table);
     },
 

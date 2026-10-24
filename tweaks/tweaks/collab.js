@@ -901,9 +901,9 @@
 .pt-collab-panel h2 { margin:0 0 10px; font-size:26px; font-weight:normal; }
 .pt-collab-panel .pt-row { display:flex; gap:8px; align-items:center; margin:8px 0; }
 .pt-collab-panel .pt-row > .button { margin:0; flex:1; }
-.pt-collab-panel input { flex:1; min-width:0; font-size:22px; padding:6px 8px; background:var(--surface-secondary-color); color:var(--text-color); border:none; text-transform:uppercase; }
+.pt-collab-panel input { flex:1; min-width:0; font-size:22px; padding:6px 8px; background:var(--surface-tertiary-color); color:var(--text-color); border:none; text-transform:uppercase; }
 .pt-collab-panel .pt-note { font-size:16px; opacity:0.8; margin:6px 0; white-space:pre-wrap; }
-.pt-collab-panel .pt-error { color:#ff8080; }
+.pt-collab-panel .pt-error { color:#ff9696; }
 .pt-collab-code { font-size:40px; letter-spacing:6px; text-align:center; margin:4px 0; user-select:text; }
 .pt-collab-players { margin-top:10px; border-top:2px solid var(--text-color); padding-top:6px; }
 .pt-collab-player { display:flex; align-items:center; gap:8px; margin:5px 0; }

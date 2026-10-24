@@ -56,14 +56,14 @@
       return codes.length ? codes.map((c) => this.keyName(c)).join(' or ') : 'unbound';
     },
 
-    /** The action's keys as small key caps, so "[" can't be read as part of the sentence around it. */
+    /** The action's keys as small chips (styled in ui.js), so "[" can't be read as part of the sentence around it. */
     caps(name) {
       const frag = document.createDocumentFragment();
       const codes = this.codes(name);
       if (!codes.length) { const s = document.createElement('span'); s.className = 'pt-key unbound'; s.textContent = 'unbound'; frag.appendChild(s); return frag; }
       codes.forEach((c, i) => {
         if (i) frag.appendChild(document.createTextNode(' or '));
-        const k = document.createElement('kbd');
+        const k = document.createElement('span');
         k.className = 'pt-key';
         k.textContent = this.keyName(c);
         frag.appendChild(k);
@@ -89,15 +89,6 @@
       } catch (e) { console.warn('[keys] could not carry over the old key choices', e); }
     },
   };
-
-  const st = document.createElement('style');
-  st.id = 'pt-keys-css';
-  st.textContent = `
-kbd.pt-key, span.pt-key { display:inline-block; min-width:1.1em; padding:0 0.3em; margin:0 0.1em; text-align:center;
-  font:inherit; line-height:1.25; border:1px solid rgba(255,255,255,0.45); border-radius:3px; background:rgba(255,255,255,0.1); }
-span.pt-key.unbound { opacity:0.6; border-style:dashed; }
-`;
-  (document.head || document.documentElement).appendChild(st);
 
   window.PTKeys = PTKeys;
 
