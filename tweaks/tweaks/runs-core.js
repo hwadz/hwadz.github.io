@@ -72,7 +72,8 @@
       firstPlayed: null, lastPlayed: null,
       bestFrames: null, bestAt: null,
       finishTimes: [], progression: [],
-      splits: { best: [], sum: [], count: [], bestSeg: [] },   // per checkpoint index; bestSeg is per section
+      splits: { best: [], sum: [], count: [], bestSeg: [], segSum: [], segCount: [] },   // per checkpoint index; *Seg* per section
+      pbSplits: null,                                           // the personal best run's own splits
       resetCells: {}, resetByCheckpoint: [], footprint: null,
       maxSpeedKmh: 0,
     };
@@ -122,6 +123,7 @@
       if (t.bestFrames == null || frames < t.bestFrames) {
         t.bestFrames = frames;
         t.bestAt = when;
+        t.pbSplits = (attempt.splits || []).slice(0, 64);
         t.progression.push({ t: when, f: frames });
         if (t.progression.length > LIMITS.progression) t.progression.splice(0, t.progression.length - LIMITS.progression);
       }
@@ -141,15 +143,20 @@
     // best section times added together are the run this track would give you on a perfect day
     const splits = attempt.splits || [];
     if (!t.splits.bestSeg) t.splits.bestSeg = [];
+    if (!t.splits.segSum) { t.splits.segSum = []; t.splits.segCount = []; }
     for (let i = 0; i < splits.length; i++) {
       const s = splits[i];
       if (!isFinite(s)) continue;
       if (t.splits.best[i] == null || s < t.splits.best[i]) t.splits.best[i] = s;
       t.splits.sum[i] = (t.splits.sum[i] || 0) + s;
       t.splits.count[i] = (t.splits.count[i] || 0) + 1;
-      if (attempt.finished || i < splits.length - 1) {          // only sections actually completed
+      {                                                          // every split is a checkpoint reached, so its section was driven
         const seg = i === 0 ? s : s - splits[i - 1];
         if (isFinite(seg) && seg >= 0 && (t.splits.bestSeg[i] == null || seg < t.splits.bestSeg[i])) t.splits.bestSeg[i] = seg;
+        if (isFinite(seg) && seg >= 0) {
+          t.splits.segSum[i] = (t.splits.segSum[i] || 0) + seg;
+          t.splits.segCount[i] = (t.splits.segCount[i] || 0) + 1;
+        }
       }
     }
 
@@ -189,6 +196,9 @@
       worstFinish: times.length ? Math.max(...times) : null,
       averageSplits: avgSplits,
       bestSections: segs,
+      // section i runs from checkpoint i (0 = the start) to checkpoint i + 1 (the last one is the finish)
+      averageSections: (t.splits.segSum || []).map((v, i) => (t.splits.segCount[i] ? v / t.splits.segCount[i] : null)),
+      pbSections: t.pbSplits ? t.pbSplits.map((v, i) => (i === 0 ? v : v - t.pbSplits[i - 1])) : null,
       theoreticalBest: sumOfBest,
       averageAttemptMs: t.attempts ? t.drivingMs / t.attempts : 0,
     };

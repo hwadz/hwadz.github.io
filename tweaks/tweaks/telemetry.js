@@ -14,7 +14,7 @@
  *   - air time, wheels on the ground, top speed and distance of the run, the last hit, rotation rate,
  *     position.
  *
- * Settings → Telemetry turns it off. It is built as a data layer (what was measured) and a view (how it
+ * Settings → Tweaks → Telemetry turns it off. It is built as a data layer (what was measured) and a view (how it
  * is drawn), so the look can change without touching the measuring.
  *
  * Where the numbers come from: the physics worker sends the car's state for every simulated

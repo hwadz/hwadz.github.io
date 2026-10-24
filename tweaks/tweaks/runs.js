@@ -79,13 +79,15 @@
   function barChart(canvas, values, opts = {}) {
     const { ctx, width, height } = prepare(canvas, opts.height || 160);
     const pad = { l: 44, r: 8, t: 10, b: 22 };
-    const max = Math.max(1, ...values.map((v) => v.value));
+    const top = Math.max(1, ...values.map((v) => v.value));
+    const step = opts.formatY ? top / 3 : Math.ceil(top / 3);    // counts get whole-number gridlines
+    const max = step * 3;
     const plotW = width - pad.l - pad.r, plotH = height - pad.t - pad.b;
     ctx.strokeStyle = CHART.grid; ctx.fillStyle = CHART.text;
     for (let i = 0; i <= 3; i++) {
       const y = pad.t + plotH * (i / 3);
       ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(width - pad.r, y); ctx.stroke();
-      const label = opts.formatY ? opts.formatY(max * (1 - i / 3)) : Math.round(max * (1 - i / 3));
+      const label = opts.formatY ? opts.formatY(max * (1 - i / 3)) : step * (3 - i);
       ctx.fillText(String(label), 4, y + 4);
     }
     const bw = plotW / Math.max(1, values.length);
@@ -167,7 +169,7 @@
 
   const CSS = `
 .pt-runs-overlay { position:absolute; left:0; top:0; width:100%; height:100%; z-index:40; display:flex; flex-direction:column;
-  background:rgba(20,20,30,0.82); color:var(--text-color); font-family:ForcedSquare, system-ui, sans-serif; pointer-events:auto; }
+  background:rgb(20,20,30); color:var(--text-color); font-family:ForcedSquare, system-ui, sans-serif; pointer-events:auto; }
 .pt-runs-overlay.hidden { display:none; }
 .pt-runs-overlay.screen { background:var(--surface-secondary-color, #171b33); }
 .pt-runs-head { display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--surface-color); }
@@ -189,6 +191,13 @@ table.pt-runs-table { width:100%; border-collapse:collapse; font-size:17px; }
 table.pt-runs-table th { text-align:left; opacity:0.7; font-weight:normal; padding:4px 6px; border-bottom:1px solid rgba(255,255,255,0.15); }
 table.pt-runs-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,255,0.06); }
 table.pt-runs-table tr.click { cursor:pointer; }
+table.pt-runs-sections td.pt-runs-best { color:#8ce58c; }
+table.pt-runs-sections tr.pt-runs-total td { border-top:1px solid rgba(255,255,255,0.3); font-weight:bold; }
+.pt-runs-loss { display:inline-block; vertical-align:middle; width:90px; height:7px; margin-left:8px; background:rgba(255,255,255,0.08); }
+.pt-runs-loss > i { display:block; height:100%; background:#ff8f8f; }
+.track-info-ui .pt-track-stats { display:flex; align-items:center; justify-content:center; gap:10px; margin:10px auto 2px; padding:6px 20px;
+  font-size:24px; }
+.track-info-ui .pt-track-stats small { font-size:15px; opacity:0.7; }
 table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
 .pt-runs-row { display:flex; gap:8px; align-items:center; margin:8px 0; flex-wrap:wrap; }
 .pt-runs-note { font-size:16px; opacity:0.8; margin:6px 0; white-space:pre-wrap; }
@@ -286,8 +295,12 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
         this.resetCounter = info.resetCounter;
         this.attempt = {
           startedAt: Date.now(), frames: 0, splits: [], cp: 0, finished: false, recorded: false,
-          maxSpeedKmh: 0, lastPosition: null, distance: 0, started: false,
+          maxSpeedKmh: 0, lastPosition: null, distance: 0, started: false, exact: [],
         };
+        // the exact millisecond of each checkpoint: this sampling runs every other frame, the car's
+        // own checkpoint event fires on the simulated frame that crossed it
+        const att = this.attempt;
+        try { car.addCheckpointCallback((i) => { if (this.attempt === att) att.exact[i] = car.getTime().numberOfFrames; }); } catch {}
         if (window.PTPractice && window.PTPractice.noteAttempt) window.PTPractice.noteAttempt();
       }
       const a = this.attempt;
@@ -303,7 +316,7 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
         a.lastPosition = { x: st.position.x, y: st.position.y, z: st.position.z };
       }
       while (st.nextCheckpointIndex > a.cp) {
-        a.splits.push(st.frames);
+        a.splits.push(a.exact[a.cp] != null ? a.exact[a.cp] : st.frames);
         a.cp++;
       }
       if (st.finishFrames != null && !a.finished) {
@@ -586,6 +599,34 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
     },
     toggle() { if (!this.overlay || this.overlay.classList.contains('hidden')) this.open(); else this.close(); },
 
+    /** Straight to one track's page of the Statistics screen. */
+    openTrack(key) {
+      this.buildOverlay();
+      this.tab = 'tracks';
+      this.selectedTrack = key;
+      this.overlay.classList.remove('hidden');
+      this.render();
+    },
+
+    /** The statistics key the game's track page stands for (custom tracks go by name, as attempts do). */
+    keyForTrack(id, category, name) { return category === 'custom' ? 'custom:' + name : (id || 'custom:' + name); },
+
+    /** The track page (main.bundle.js) asks for this under Personal best. */
+    trackPageButton(container, { id, category, name }) {
+      try {
+        const key = this.keyForTrack(id, category, name);
+        const rec = this.stats && this.stats.tracks[key];
+        const b = el('button', 'button pt-track-stats', 'Statistics');
+        b.appendChild(el('small', null, rec ? rec.attempts + (rec.attempts === 1 ? ' attempt' : ' attempts') : 'not driven yet'));
+        b.title = 'Your best times between checkpoints, and everything else recorded on this track';
+        b.addEventListener('click', () => {
+          if (!this.stats.tracks[key]) return this.toast('No statistics for this track yet — drive it once and they appear here.');
+          this.openTrack(key);
+        });
+        container.appendChild(b);
+      } catch (e) { console.error('[runs] track page button', e); }
+    },
+
     buildOverlay() {
       if (this.overlay) return;
       const root = document.getElementById('ui') || document.body;
@@ -754,6 +795,50 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
         requestAnimationFrame(() => barChart(dc, counts.map((c, i) => ({ value: c, label: i === 0 ? fmt(min) : i === buckets - 1 ? fmt(max) : '' })), { height: 150 }));
       } else dist.appendChild(el('p', 'pt-runs-note', 'Not enough finishes yet.'));
 
+      // best times between checkpoints: each section on its own, and where your best run loses time
+      const secs = this.card(body, 'Best times between checkpoints');
+      const sections = t.bestSections || [];
+      if (sections.length) {
+        const n = sections.length, finishLast = t.finishes > 0 && n === t.splits.best.length;
+        const point = (i) => (i === 0 ? 'Start' : i === n && finishLast ? 'Finish' : 'CP ' + i);
+        const losses = sections.map((best, i) => (t.pbSections && t.pbSections[i] != null && best != null ? t.pbSections[i] - best : null));
+        const worst = Math.max(1, ...losses.filter((x) => x != null));
+        const table = el('table', 'pt-runs-table pt-runs-sections');
+        table.innerHTML = '<tr><th>Section</th><th>Best</th><th>Average</th><th>In your best run</th><th>Your best run loses</th></tr>';
+        sections.forEach((best, i) => {
+          const tr = el('tr');
+          tr.appendChild(el('td', null, point(i) + ' → ' + point(i + 1)));
+          tr.appendChild(el('td', 'pt-runs-best', best != null ? fmt(best) : '—'));
+          const avg = t.averageSections ? t.averageSections[i] : null;
+          tr.appendChild(el('td', null, avg != null ? fmt(avg) : '—'));
+          const pb = t.pbSections ? t.pbSections[i] : null;
+          tr.appendChild(el('td', null, pb != null ? fmt(pb) : '—'));
+          const lossCell = el('td');
+          const loss = losses[i];
+          if (loss != null) {
+            const bar = el('span', 'pt-runs-loss');
+            const fill = el('i'); fill.style.width = (100 * loss / worst).toFixed(1) + '%';
+            bar.appendChild(fill);
+            lossCell.append(loss > 0 ? '+' + fmt(loss) : '±0.000');
+            lossCell.appendChild(bar);
+          } else lossCell.textContent = '—';
+          tr.appendChild(lossCell);
+          table.appendChild(tr);
+        });
+        const total = el('tr', 'pt-runs-total');
+        total.appendChild(el('td', null, 'Whole run'));
+        total.appendChild(el('td', 'pt-runs-best', t.theoreticalBest != null ? fmt(t.theoreticalBest) : '—'));
+        total.appendChild(el('td', null, t.averageFinish != null ? fmt(t.averageFinish) : '—'));
+        total.appendChild(el('td', null, t.bestFrames != null ? fmt(t.bestFrames) : '—'));
+        const gave = t.bestFrames != null && t.theoreticalBest != null ? t.bestFrames - t.theoreticalBest : null;
+        total.appendChild(el('td', null, gave == null ? '—' : gave > 0 ? '+' + fmt(gave) : '±0.000'));
+        table.appendChild(total);
+        secs.appendChild(table);
+        secs.appendChild(el('p', 'pt-runs-note', 'Best: your quickest time on that section in any run, finished or not. Added up, they make the whole-run best'
+          + ' (the theoretical best). The last column is how much your personal best gave away on each section against your own best there.'
+          + (t.pbSections ? '' : ' Your personal best predates this table: set a new one to fill that column.')));
+      } else secs.appendChild(el('p', 'pt-runs-note', 'No sections recorded yet — pass a checkpoint and they appear here.'));
+
       const splits = this.card(body, 'Checkpoint splits');
       if (t.splits.best.length) {
         const table = el('table', 'pt-runs-table');
@@ -887,7 +972,7 @@ table.pt-runs-table tr.click:hover td { background:rgba(255,255,255,0.07); }
       else parent.appendChild(document.createTextNode('?'));
     },
     keysNote() {
-      return el('p', 'pt-runs-note', 'Keys are set with the game’s own, in Settings → Controls → Tweaks.');
+      return el('p', 'pt-runs-note', 'Keys are set with the game’s own, in Settings → Controls → Tweaks: other keys.');
     },
   };
 

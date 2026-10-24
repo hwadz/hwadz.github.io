@@ -16,10 +16,10 @@
  * tracks, every run on others — minus any run the server marks invalid. σ is the population
  * standard deviation of the sample.
  *
- * Where the numbers come from and what it costs: the game's own leaderboard requests, at most 500
- * runs each (the most the server hands out), one at a time with a pause in between, only when you
- * press a button, and kept for a day. Checking every official and community track is two requests
- * per track at the default sample.
+ * Where the numbers come from and what it costs: the shared leaderboard cache (tweaks/boards.js) —
+ * the game's own leaderboard requests, at most 500 runs each, one at a time with a pause in between,
+ * only when you press a button, kept for a day and shared with the global ranking. Checking every
+ * official and community track is two requests per track at the default sample.
  *
  *   - Track selection: a "Z-scores" button (every track at once, ranked); each track's tile shows
  *     its z once known, and the details on hover or keyboard focus.
@@ -31,14 +31,11 @@
 
   const STORE_KEY = 'pt-zscore-v1';
   const PREFS_KEY = 'pt-zscore-prefs-v1';
-  const PAGE = 500;                    // the most runs the server hands out per request
-  const GAP_MS = 500;                  // pause between two requests
   const TTL = 24 * 3600 * 1000;        // how long a result is good for
   const SAMPLES = [100, 500, 1000];
   const MAX_FAILS = 3;                 // in a row, before a full scan gives up
   const log = (...a) => console.log('[zscore]', ...a);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   // the API hands times back as the game's Time object; frames are milliseconds
   const framesOf = (v) => (v == null ? null : typeof v === 'number' ? v : (typeof v.numberOfFrames === 'number' ? v.numberOfFrames : Number(v)));
   const fmtTime = (ms) => (ms == null ? '—' : window.PTRunsCore ? window.PTRunsCore.formatTime(ms) : (ms / 1000).toFixed(3));
@@ -126,8 +123,6 @@ table.pt-z-table td button:hover { opacity:1; }
     overlay: null,
     batch: null,
     inflight: new Map(),
-    queue: Promise.resolve(),
-    lastRequestAt: 0,
     sort: { key: 'z', dir: -1 },
 
     init() {
@@ -160,25 +155,13 @@ table.pt-z-table td button:hover { opacity:1; }
       return out;
     },
 
-    /** One request at a time, with a pause between them, whoever asks. */
-    request(fn) {
-      const run = async () => {
-        const wait = this.lastRequestAt + GAP_MS - Date.now();
-        if (wait > 0) await sleep(wait);
-        try { return await fn(); } finally { this.lastRequestAt = Date.now(); }
-      };
-      const p = this.queue.then(run, run);
-      this.queue = p.catch(() => { });
-      return p;
-    },
-
     /** The z-score of one track: from the cache when it is recent, else from the leaderboard. */
     compute(track, force) {
       const key = this.key(track.id);
       const have = this.cache[key];
       if (!force && have && Date.now() - have.at < TTL) return Promise.resolve(have);
       if (this.inflight.has(key)) return this.inflight.get(key);
-      const p = this.fetchAndScore(track).then((rec) => {
+      const p = this.fetchAndScore(track, force).then((rec) => {
         this.cache[key] = rec;
         this.save();
         this.repaint(track.id);
@@ -188,32 +171,24 @@ table.pt-z-table td button:hover { opacity:1; }
       return p;
     },
 
-    async fetchAndScore(track) {
-      const api = window.__ptApi;
-      if (!api || typeof api.getLeaderboard !== 'function') throw new Error('The leaderboard is not available yet.');
+    async fetchAndScore(track, force) {
+      if (!window.PTBoards) throw new Error('The leaderboard cache is not loaded.');
       const sample = this.prefs.sample, verified = this.verifiedFor(track.type);
-      // the server wants the player's token hash with every leaderboard request, as the game sends it
-      let token = '';
-      try { token = window.__ptProfiles.getCurrentUserProfile().tokenHash || ''; } catch { }
+      // the runs come from the shared cache (tweaks/boards.js): paced, kept a day, shared with the global ranking
+      const board = await window.PTBoards.top(track, sample, { verified, force: !!force });
+      const total = board.total;
       const times = [], top = [];
-      let total = null;
-      for (let skip = 0; skip < sample; skip += PAGE) {
-        const amount = Math.min(PAGE, sample - skip);
-        const res = await this.request(() => api.getLeaderboard(token, track.id, skip, amount, verified));
-        total = res.total;
-        for (const e of res.entries) {
-          if (e.verifiedState >= 2) continue;                    // invalid, a duplicate, or removed
-          const t = framesOf(e.frames);
-          if (t == null || !(t > 0)) continue;
-          times.push(t);
-          if (top.length < 2) top.push({ name: e.nickname, at: e.time instanceof Date ? e.time.getTime() : null });
-        }
-        if (res.entries.length < amount || skip + amount >= total) break;
+      for (const e of board.entries) {
+        if (e.verifiedState >= 2) continue;                      // invalid, a duplicate, or removed
+        const t = e.frames;
+        if (t == null || !(t > 0)) continue;
+        times.push(t);
+        if (top.length < 2) top.push({ name: e.nickname, at: e.date });
       }
       times.sort((a, b) => a - b);
       const s = score(times);
       return {
-        id: track.id, name: track.name, type: track.type, sample, verified, total, at: Date.now(),
+        id: track.id, name: track.name, type: track.type, sample, verified, total, at: board.at,
         n: s.n, mean: s.mean, sd: s.sd, z: s.z, gap2: s.gap2,
         wr: times.length ? times[0] : null, second: times.length > 1 ? times[1] : null,
         wrName: top[0] ? top[0].name : null, wrAt: top[0] ? top[0].at : null,
