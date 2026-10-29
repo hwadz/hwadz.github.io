@@ -15,6 +15,14 @@
  *
  * Session timer: how long you have been on this track, in the top right corner of a race. Restarts
  * don't reset it; leaving the track does. Settings → Tweaks → Session timer turns it off.
+ *
+ * Live difference: the game's Difference box, while you drive, shows your elapsed time minus the
+ * record's whole time — a number that only means something at the finish. With this on it shows how
+ * far ahead (green, −) or behind (red, +) of that same record you are at the point of the track you
+ * are on, updated every frame: where the record's ghost was nearest to your car (in the same section
+ * between checkpoints), and when it was there. At the finish it is the game's own exact difference.
+ * It needs the record's ghost (Settings → Ghost car on), which it reads positions from; without one
+ * the box shows the game's number. Settings → Tweaks → Live difference turns it off.
  */
 (function () {
   'use strict';
@@ -78,6 +86,44 @@ body.pt-session-on .ghost-loading-ui:not(.down) { top:52px; }
     return best;
   }
 
+  /**
+   * Where a ghost was at every millisecond of its run. Its replay keeps each frame compressed, so the
+   * positions are read out once, a slice per frame, into plain arrays the live difference can search.
+   */
+  class GhostPath {
+    constructor(ghost) {
+      this.ghost = ghost;
+      this.replay = ghost.replay;
+      this.n = ghost.settings.time.numberOfFrames + 1;
+      this.x = new Float32Array(this.n); this.y = new Float32Array(this.n); this.z = new Float32Array(this.n);
+      this.done = 0;
+    }
+    /** Reads the frames the ghost has simulated since last time, for at most `ms` of this frame. */
+    advance(ms) {
+      const rep = this.replay && this.replay.replay;
+      if (!rep || this.done >= this.n) return;
+      const last = Math.min(this.n - 1, rep.getLastFrame().numberOfFrames);
+      const until = performance.now() + ms;
+      while (this.done <= last) {
+        const s = rep.getFrame(this.done);
+        if (!s) break;
+        const i = this.done++;
+        this.x[i] = s.position.x; this.y[i] = s.position.y; this.z[i] = s.position.z;
+        if ((this.done & 63) === 0 && performance.now() > until) break;
+      }
+    }
+    /** The ghost's frames that belong to section `seg` (between checkpoint seg and seg + 1). */
+    section(seg) {
+      const cps = this.ghost.checkpoints || [];
+      if (seg > cps.length) return null;
+      const lo = seg === 0 ? 0 : cps[seg - 1].time.numberOfFrames;
+      const hi = seg < cps.length ? cps[seg].time.numberOfFrames : this.n - 1;
+      return [lo, Math.min(hi, this.done - 1)];
+    }
+  }
+
+  const NEAR = 15 * 15;            // m²: further than this from the last match, look through the whole section again
+
   /** A copy of a ghost's times and speeds, so a new personal best replacing it mid-callback can't change them. */
   function snapshot(g) {
     if (!g) return null;
@@ -137,11 +183,20 @@ body.pt-session-on .ghost-loading-ui:not(.down) { top:52px; }
       this.detach();
       this.ctx = { kind: 'replay', viewer, owner: viewer, entry: null, done: 0, finished: false, frame: -1 };
       this.start();
+      // the replay tools and the run comparison live in the same viewer
+      for (const m of [window.PTReplayTools, window.PTCompare]) {
+        try { if (m && m.attach) m.attach(viewer); } catch (e) { console.error('[racehud] replay attach', e); }
+      }
     },
 
     detach(owner) {
       const c = this.ctx;
       if (!c || (owner && c.owner !== owner)) return;
+      if (c.kind === 'replay') {
+        for (const m of [window.PTReplayTools, window.PTCompare]) {
+          try { if (m && m.detach) m.detach(c.viewer); } catch (e) { console.error('[racehud] replay detach', e); }
+        }
+      }
       cancelAnimationFrame(this.raf);
       clearTimeout(this.hideTimer); clearTimeout(this.fadeTimer);
       if (this.popup) { this.popup.remove(); this.popup = null; }
@@ -202,6 +257,7 @@ body.pt-session-on .ghost-loading-ui:not(.down) { top:52px; }
     bindCar(car) {
       const c = this.ctx;
       c.car = car;
+      c.k = -1; c.seg = -1; c.live = null;                  // the live difference starts again from the start
       this.hideSplit();                                     // a new attempt starts clean
       c.ref = snapshot(bestGhost(c.race.__ptRun().ghosts));
       if (!car) return;
@@ -226,6 +282,65 @@ body.pt-session-on .ghost-loading-ui:not(.down) { top:52px; }
 
     checkpointCount(track) {
       try { return track.getTotalNumberOfCheckpointIndices(); } catch { return null; }
+    },
+
+    // ---------------------------------------------------------------- the live difference
+    liveOn() { return this.setting('TweaksLiveDelta', 'true') !== 'false'; },
+
+    /**
+     * Asked by the game's timer every frame while you race: how many ms you are behind (+) or ahead
+     * (−) of `record` at this point of the track, or null to let the box show the game's own number.
+     */
+    liveDifference(car, record) {
+      const c = this.ctx;
+      if (!c || c.kind !== 'race' || !record || !this.liveOn()) return null;
+      let run;
+      try { run = c.race.__ptRun(); } catch { return null; }
+      if (!car || car !== run.car || car.hasFinished()) return null;
+      const g = bestGhost(run.ghosts);
+      if (!g || !g.replay || !g.replay.replay || g.settings.time.numberOfFrames !== record.numberOfFrames) return null;
+      const st = car.getCarState();
+      if (!st || !st.position) return null;
+      if (!st.hasStarted || st.frames === 0) { c.live = null; return 0; }
+      if (!c.path || c.path.ghost !== g || c.path.replay !== g.replay) { c.path = new GhostPath(g); c.k = -1; }
+      c.path.advance(1.5);
+      const f = this.matchFrame(c, st);
+      if (f == null) return c.live != null ? c.live : null;     // between matches, keep the last one up
+      c.live = Math.round(st.frames - f);
+      return c.live;
+    },
+
+    /** The ghost's (fractional) frame at the point of its run nearest the car, in the car's section. */
+    matchFrame(c, st) {
+      const P = c.path, seg = st.nextCheckpointIndex;
+      const range = P.section(seg);
+      if (!range || range[1] < range[0]) return null;
+      const [lo, hi] = range;
+      const px = st.position.x, py = st.position.y, pz = st.position.z;
+      const X = P.x, Y = P.y, Z = P.z;
+      let best = -1, bd = Infinity;
+      const scan = (a, b) => {
+        for (let k = a; k <= b; k++) {
+          const dx = X[k] - px, dy = Y[k] - py, dz = Z[k] - pz, d = dx * dx + dy * dy + dz * dz;
+          if (d < bd) { bd = d; best = k; }
+        }
+      };
+      // near the last match first (the ghost moves on by about as much as the car does each frame);
+      // a new section, a reset or a shortcut means looking through the whole section
+      if (c.seg === seg && c.k >= lo && c.k <= hi) scan(Math.max(lo, c.k - 250), Math.min(hi, c.k + 750));
+      if (best < 0 || bd > NEAR) { best = -1; bd = Infinity; scan(lo, hi); }
+      if (best < 0) return null;
+      c.k = best; c.seg = seg;
+      // the car is between two of the ghost's frames: on the side of the neighbour it projects onto
+      const along = (a, b) => {
+        const vx = X[b] - X[a], vy = Y[b] - Y[a], vz = Z[b] - Z[a], l = vx * vx + vy * vy + vz * vz;
+        if (!l) return 0;
+        const t = ((px - X[a]) * vx + (py - Y[a]) * vy + (pz - Z[a]) * vz) / l;
+        return t < 0 ? 0 : t > 1 ? 1 : t;
+      };
+      if (best < hi) { const t = along(best, best + 1); if (t > 0) return best + t; }
+      if (best > lo) return best - 1 + along(best - 1, best);
+      return best;
     },
 
     // ---------------------------------------------------------------- the replay viewer

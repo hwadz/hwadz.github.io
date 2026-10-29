@@ -6,6 +6,9 @@
  *  - Saves runs as clips: the game's own input recording, which is tiny and replays exactly. Clips
  *    can be copied as a code, written to a .ptclip file, and raced against as a ghost.
  *  - All decisions about data live in runs-core.js; this file is the game glue and the screens.
+ *  - The track page: Statistics and Notes buttons, and a summary of your last session on that track
+ *    (attempts, finishes, your best then against your personal best, time spent) when you come back
+ *    to it from a race. Settings → Tweaks → Session summary turns the summary off.
  */
 (function () {
   'use strict';
@@ -15,7 +18,9 @@
   const STATS_KEY = 'pt-stats-v1';
   const CLIPS_KEY = 'pt-clips-v1';
   const PREFS_KEY = 'pt-runs-prefs-v1';
+  const NOTES_KEY = 'pt-notes-v1';
   const SAVE_DEBOUNCE = 4000;
+  const SESSION_SHOWN_FOR = 30 * 60 * 1000;   // the last session stays on its track's page this long
   const MIN_CLIP_MS = 700;          // ignore instant restarts when recording every run
   const MAX_CLIP_BYTES = 4 << 20;
 
@@ -178,19 +183,40 @@
 
   const CSS = `
 .pt-runs-overlay canvas { display:block; width:100%; }
-.track-info-ui .pt-track-stats { display:block; margin:-6px auto 16px; padding:6px 22px; font-size:24px; }
-.track-info-ui .pt-track-stats > img.button-icon { width:26px; height:26px; margin:-4px 2px 0 -4px; }
-.track-info-ui .pt-track-stats > small { margin-left:10px; font-size:16px; opacity:0.6; }
+.track-info-ui .pt-track-tools { display:flex; justify-content:center; gap:10px; margin:-6px 12px 16px; }
+.track-info-ui .pt-track-tools > .button { margin:0; padding:6px 18px; font-size:22px; white-space:nowrap; }
+.track-info-ui .pt-track-tools > .button > img.button-icon { width:24px; height:24px; margin:-4px 2px 0 -4px; }
+.track-info-ui .pt-track-tools > .button > small { margin-left:8px; font-size:15px; opacity:0.6; }
+.track-info-ui .pt-track-tools > .pt-track-notes.has > small { opacity:1; color:#ff5; }
+
+/* your last session on this track, under the personal best */
+.track-info-ui .pt-session-card { position:relative; margin:-4px 16px 16px; padding:8px 12px 10px; text-align:left; color:var(--text-color);
+  background-color:var(--surface-tertiary-color); animation:pt-fade 0.16s ease-out; }
+.pt-session-card .head { display:flex; align-items:baseline; gap:10px; font-size:18px; opacity:0.75; }
+.pt-session-card .head > .grow { flex:1; }
+.pt-session-card .head > button { padding:0 6px; font-size:16px; line-height:1.2; background:none; border:none; color:var(--text-color); cursor:pointer; opacity:0.8; }
+.pt-session-card .head > button:hover { opacity:1; }
+.pt-session-card .line { margin-top:4px; font-size:18px; }
+.pt-session-card .big { font-size:22px; }
+.pt-session-card .ahead { color:#5f5; }
+.pt-session-card .behind { color:#f55; }
+.pt-session-card .dim { opacity:0.6; }
+
+/* notes */
+.pt-notes-overlay textarea.pt-notes-text { display:block; min-height:340px; padding:12px 14px; font-size:20px; line-height:1.45;
+  word-break:normal; overflow-wrap:anywhere; }
 `;
 
   const PTRuns = {
-    stats: null, clips: null, prefs: null,
+    stats: null, clips: null, prefs: null, notes: null,
     race: null, info: null, car: null, attempt: null, lastRun: null, resetCounter: -1,
+    session: null, lastSession: null,
     pendingGhosts: [], overlay: null, tab: 'overview', selectedTrack: null, saveTimer: 0, loopId: 0, lastFrameAt: 0,
 
     init() {
       this.stats = loadJSON(STATS_KEY, null) || Core.emptyStats();
       this.clips = loadJSON(CLIPS_KEY, null) || [];
+      this.notes = loadJSON(NOTES_KEY, null) || {};
       this.prefs = Object.assign({ recordEvery: false, clipRecords: true }, loadJSON(PREFS_KEY, {}));
       this.stats.totals.sessions = (this.stats.totals.sessions || 0) + 1;
       this.injectCss();
@@ -224,14 +250,42 @@
         this.info = race.__ptRun();
         this.car = null; this.attempt = null; this.resetCounter = -1;
         this.track = this.identify(this.info);
+        const rec = this.stats.tracks[this.track.key];
+        // a session is one visit to a track: restarts are part of it, leaving ends it
+        this.session = { key: this.track.key, id: this.track.id, name: this.track.name, type: this.track.type,
+          t0: performance.now(), attempts: 0, finishes: 0, best: null, editor: false,
+          pbBefore: this.gameBest(this.track.id) ?? (rec ? rec.bestFrames : null) };
         this.armPendingGhosts();
       } catch (e) { console.error('[runs] race start', e); }
     },
 
     raceEnded() {
       try { this.endAttempt(false); } catch (e) { console.error('[runs] race end', e); }
+      try { this.endSession(); } catch (e) { console.error('[runs] session end', e); }
       this.race = null; this.info = null; this.car = null; this.attempt = null;
       this.saveNow();
+    },
+
+    /** Your personal best on a track as the game keeps it (it predates these statistics). */
+    gameBest(id) {
+      try {
+        const R = window.__ptRecords, P = window.__ptProfiles;
+        const t = R && P && id ? R.getRecordTime(P.profileSlot, id) : null;
+        return t ? t.numberOfFrames : null;
+      } catch { return null; }
+    },
+
+    /** The track has been left: what that visit came to, for its page and the recently played list. */
+    endSession() {
+      const s = this.session;
+      this.session = null;
+      if (!s || s.editor || (window.PTPractice && window.PTPractice.race && window.PTPractice.race === this.race)) return;
+      if (window.PTTrackList && window.PTTrackList.notePlayed) window.PTTrackList.notePlayed(s.key, s.type);
+      if (!s.attempts) return;
+      s.ms = performance.now() - s.t0;
+      s.endedAt = Date.now();
+      s.pbAfter = this.gameBest(s.id) ?? (this.stats.tracks[s.key] ? this.stats.tracks[s.key].bestFrames : null);
+      this.lastSession = s;
     },
 
     /** Custom tracks change id whenever they are edited, so group those by name instead. */
@@ -257,6 +311,8 @@
     // ------------------------------------------------------------------ sampling
     sample() {
       if (!this.race) return;
+      // the editor's test drive is a race too, but not a session on a track
+      if (this.session && !this.session.editor && window.PTPractice && window.PTPractice.race === this.race) this.session.editor = true;
       let info;
       try { info = this.race.__ptRun(); } catch { return; }
       const car = info.car;
@@ -329,6 +385,11 @@
       };
       Core.recordAttempt(this.stats, attempt);
       this.queueSave();
+      const s = this.session;
+      if (s) {
+        s.attempts++;
+        if (a.finished) { s.finishes++; if (s.best == null || attempt.frames < s.best) s.best = attempt.frames; }
+      }
       // your own leaderboard entry just changed, so a profile compiled earlier is stale
       if (a.finished && (previousBest == null || attempt.frames < previousBest)
         && window.PTProfile && window.PTProfile.invalidateSelf) window.PTProfile.invalidateSelf();
@@ -384,6 +445,7 @@
 
     /** The key that saves a clip: the run in progress if you are driving, otherwise the last one. */
     saveClipNow() {
+      if (window.PTReplayTools && window.PTReplayTools.viewer) return window.PTReplayTools.saveClip();
       let run = null;
       const a = this.attempt;
       if (a && a.started && !a.recorded && this.car) {
@@ -405,6 +467,7 @@
         id: 'c' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),
         savedAt: Date.now(), label: Core.clipLabel(clip), track: clip.track.name, trackKey: clip.track.key || clip.track.id,
         frames: clip.run.frames, finished: clip.run.finished, auto: !!quiet, kind: kind || null, code,
+        range: clip.range && clip.range.to > clip.range.from ? { from: clip.range.from, to: clip.range.to } : null,
       };
       this.clips.unshift(entry);
       while (this.clips.length > Core.LIMITS.clips) this.clips.pop();
@@ -474,6 +537,8 @@
       const settings = this.ghostSettings(clip);
       if (!settings) return this.toast('This clip could not be prepared for playback.');
       this.toast('Loading "' + clip.track.name + '"…');
+      // a section is played on a loop from its start (replaytools.js picks this up as the viewer opens)
+      if (window.PTReplayTools) window.PTReplayTools.pending = clip.range ? { range: clip.range, at: Date.now() } : null;
       let track;
       try { track = await this.loadTrackFor(clip); } catch (e) { console.error('[runs] watch', e); }
       if (!track || !track.trackData) return this.toast('You do not have "' + clip.track.name + '", and this clip does not carry it.');
@@ -599,6 +664,7 @@
       try {
         const key = this.keyForTrack(id, category, name);
         const rec = this.stats && this.stats.tracks[key];
+        const row = el('div', 'pt-track-tools');
         const b = el('button', 'button pt-track-stats');
         const icon = el('img', 'button-icon');
         icon.src = 'images/graph.svg';
@@ -608,8 +674,118 @@
         b.disabled = !rec;
         b.title = rec ? 'Your best times between checkpoints, and everything else recorded on this track' : 'Drive this track once and its statistics appear here';
         b.addEventListener('click', () => { if (this.stats.tracks[key]) this.openTrack(key); });
-        container.appendChild(b);
+        row.appendChild(b);
+        const notes = el('button', 'button pt-track-notes');
+        const nicon = el('img', 'button-icon');
+        nicon.src = 'images/list.svg';
+        notes.append(nicon, ' Notes');
+        const note = this.noteFor(key);
+        notes.appendChild(el('small', null, note ? '●' : ''));
+        notes.classList.toggle('has', !!note);
+        notes.title = note ? note.slice(0, 200) : 'Your own notes on this track: lines, tricks, what to try next';
+        notes.addEventListener('click', () => this.openNotes(key, name));
+        row.appendChild(notes);
+        container.appendChild(row);
+        if (window.PTTrackList) window.PTTrackList.trackPageStar(container, key);
+        this.sessionCard(container, key);
       } catch (e) { console.error('[runs] track page button', e); }
+    },
+
+    // ------------------------------------------------------------------ your last session on a track
+    sessionSummaryOn() {
+      try {
+        const E = window.__ptSettingEnum, S = window.__ptSettingsMgr;
+        return !(E && S) || S.getSetting(E.TweaksSessionSummary) !== 'false';
+      } catch { return true; }
+    },
+
+    sessionCard(container, key) {
+      const s = this.lastSession;
+      if (!s || s.key !== key || s.dismissed || Date.now() - s.endedAt > SESSION_SHOWN_FOR || !this.sessionSummaryOn()) return;
+      const card = el('div', 'pt-session-card');
+      const head = el('div', 'head');
+      head.appendChild(el('span', null, 'Last session'));
+      head.appendChild(el('span', 'grow'));
+      head.appendChild(el('span', 'dim', dur(s.ms)));
+      const close = el('button', null, '✕');
+      close.title = 'Hide';
+      close.addEventListener('click', () => { s.dismissed = true; card.remove(); });
+      head.appendChild(close);
+      card.appendChild(head);
+      card.appendChild(el('div', 'line', s.attempts + (s.attempts === 1 ? ' attempt' : ' attempts') + ' · '
+        + s.finishes + (s.finishes === 1 ? ' finish' : ' finishes')));
+      const best = el('div', 'line');
+      if (s.best == null) best.textContent = 'No finish this time.';
+      else {
+        best.append('Best ', el('span', 'big', fmt(s.best)), ' ');
+        const was = s.pbBefore;
+        if (was == null) best.appendChild(el('span', 'ahead', 'your first finish'));
+        else if (s.best < was) best.appendChild(el('span', 'ahead', 'new personal best, −' + fmt(was - s.best)));
+        else if (s.best === was) best.appendChild(el('span', null, 'equals your personal best'));
+        else best.appendChild(el('span', 'behind', '+' + fmt(s.best - was) + ' on your personal best'));
+      }
+      card.appendChild(best);
+      container.appendChild(card);
+    },
+
+    // ------------------------------------------------------------------ notes
+    noteFor(key) { const n = this.notes && this.notes[key]; return n && n.text && n.text.trim() ? n.text : ''; },
+
+    saveNote(key, name, text) {
+      if (text.trim()) this.notes[key] = { text, name, at: Date.now() };
+      else delete this.notes[key];
+      saveJSON(NOTES_KEY, this.notes);
+    },
+
+    openNotes(key, name) {
+      if (!this.notesPage) {
+        const shown = (sel) => { const e = document.querySelector(sel); return e && e.offsetParent !== null ? e : null; };
+        this.notesPage = window.PTUI.page({
+          cls: 'pt-notes-overlay', title: 'Notes',
+          onBack: () => this.closeNotes(),
+          behind: () => [shown('.track-info-ui')],
+        });
+        const area = el('textarea', 'pt-notes-text');
+        area.spellcheck = true;
+        area.placeholder = 'Lines, tricks, where you lose time, what to try next…';
+        // typing here must not drive the game
+        for (const t of ['keydown', 'keyup', 'keypress']) area.addEventListener(t, (e) => { if (e.key !== 'Escape') e.stopPropagation(); });
+        area.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.closeNotes(); } });
+        let timer = 0;
+        area.addEventListener('input', () => {
+          clearTimeout(timer);
+          timer = setTimeout(() => this.saveNote(this.notesKey, this.notesName, area.value), 400);
+          this.notesPage.bar.querySelector('.pt-status').textContent = 'Saving…';
+          clearTimeout(this.notesSavedTimer);
+          this.notesSavedTimer = setTimeout(() => { this.notesPage.bar.querySelector('.pt-status').textContent = 'Saved on this computer'; }, 450);
+        });
+        this.notesArea = area;
+        const card = window.PTUI.card(this.notesPage.content, null);
+        card.appendChild(area);
+        card.appendChild(el('p', 'pt-note', 'Saved as you type, on this computer only. Each track has its own notes.'));
+        const status = el('span', 'pt-status');
+        this.notesPage.bar.appendChild(status);
+      }
+      this.notesKey = key; this.notesName = name;
+      this.notesPage.title.textContent = name || 'Notes';
+      this.notesPage.sub.textContent = 'Your notes';
+      this.notesArea.value = this.noteFor(key);
+      this.notesPage.bar.querySelector('.pt-status').textContent = '';
+      this.notesPage.show();
+      setTimeout(() => this.notesArea.focus(), 0);
+    },
+
+    closeNotes() {
+      if (!this.notesPage || !this.notesPage.open) return;
+      this.saveNote(this.notesKey, this.notesName, this.notesArea.value);
+      this.notesPage.hide();
+      // the track page's button shows whether there is a note
+      for (const b of document.querySelectorAll('.track-info-ui .pt-track-notes')) {
+        const has = !!this.noteFor(this.notesKey);
+        b.classList.toggle('has', has);
+        const small = b.querySelector('small'); if (small) small.textContent = has ? '●' : '';
+        b.title = has ? this.noteFor(this.notesKey).slice(0, 200) : 'Your own notes on this track: lines, tricks, what to try next';
+      }
     },
 
     buildOverlay() {
@@ -893,6 +1069,7 @@
         const tr = el('tr');
         const name = el('td', null, c.track);
         if (c.kind === 'record' || c.auto) name.appendChild(el('span', 'pt-dim', c.kind === 'record' ? '  record' : '  auto'));
+        if (c.range) name.appendChild(el('span', 'pt-dim', '  section ' + fmt(c.range.from) + '–' + fmt(c.range.to)));
         tr.appendChild(name);
         tr.appendChild(el('td', 'r', c.finished ? fmt(c.frames) : 'unfinished ' + fmt(c.frames)));
         tr.appendChild(el('td', 'r', ago(c.savedAt)));

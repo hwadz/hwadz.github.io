@@ -1,7 +1,7 @@
 /*
  * PolyTrack Tweaks — player profiles from the leaderboard.
  *
- * Every leaderboard row gets a small "Profile" button. Clicking it asks the game's own API where
+ * Every leaderboard row gets a small "Profile" button (and "vs", see compare.js). Clicking it asks the game's own API where
  * that player stands on every official and community track, then shows the result: how many tracks
  * they are ranked on, records, podiums, their best and typical placings, and the full list.
  *
@@ -35,7 +35,8 @@
 .pt-prof-slot:empty { display:none; }
 /* Reserve that width so a long nickname ellipsizes instead of running underneath the button. The
    #ui prefix is needed: the game's leaderboard stylesheet is injected lazily, after ours. */
-#ui .leaderboard-ui > .container > button.main > div > .name-container { box-sizing:border-box; padding-right:110px; }
+#ui .leaderboard-ui > .container > button.main > div > .name-container { box-sizing:border-box; padding-right:160px; }
+.pt-prof-btns { display:flex; gap:4px; }
 /* a small button of the game's own kind, a shade lighter than the row so it reads as one */
 #ui .leaderboard-ui .button.pt-prof-btn { padding:3px 12px; font-size:16px; line-height:1.15; background-color:var(--surface-color);
   clip-path:polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%); pointer-events:auto; }
@@ -101,6 +102,8 @@
           this.gapRows.push({ span: gap, frames: theirs });
           this.paintGap(gap, theirs);
         }
+        const btns = el('div', 'pt-prof-btns');
+        slot.appendChild(btns);
         const b = el('button', 'button pt-prof-btn', 'Profile');
         b.addEventListener('click', (ev) => {
           ev.preventDefault();
@@ -109,7 +112,19 @@
           if (!e || !e.userId) return this.toast('That row has no player id to look up.');
           this.open(e.userId, e.nickname || nickname, e.countryCode);
         });
-        slot.appendChild(b);
+        btns.appendChild(b);
+        if (window.PTCompare) {
+          // section by section against your personal best (compare.js)
+          const c = el('button', 'button pt-prof-btn pt-cmp-btn', 'vs');
+          c.title = 'Compare: watch this run against your personal best, section by section';
+          c.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            const e = this.page.get(recordingId);
+            window.PTCompare.start({ recordingId, nickname: (e && e.nickname) || nickname, trackId: this.trackId });
+          });
+          btns.appendChild(c);
+        }
         row.appendChild(slot);
         if (this.trackId) this.ensureRecord(this.trackId);
       } catch (e) { log('could not decorate a row', e); }
